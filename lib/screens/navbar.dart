@@ -41,11 +41,11 @@ class _NavBarState extends State<NavBar> {
             tabs: [
               GButton(
                 icon: LineIcons.home,
-                text: 'Home',
+                text: 'Home', //Home 
               ),
               GButton(
                 icon: LineIcons.music,
-                text: 'Songs',
+                text: 'Songs', //Songs
               ),
               GButton(
                 icon: LineIcons.search,
