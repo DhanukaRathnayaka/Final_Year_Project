@@ -1,4 +1,4 @@
-import 'navbar.dart';
+import '../../widgets/navbar.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatefulWidget {

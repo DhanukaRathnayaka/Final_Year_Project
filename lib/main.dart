@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/home_screen.dart'; // Replace 'folder_name' with your actual folder name
+import 'screens/navbar/home_screen.dart'; // Replace 'folder_name' with your actual folder name
 
 void main() {
   runApp(const SafeSpaceApp());
