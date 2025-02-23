@@ -13,6 +13,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   google_nav_bar: ^5.0.7
   line_icons: ^2.0.3
+  icons_plus: ^4.0.0
+  intro_screen_onboarding_flutter: ^1.0.0
 
 dev_dependencies:
   flutter_test:
@@ -21,3 +23,37 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/
+  
+  fonts:
+    - family: Alegreya
+      fonts:
+        - asset: assets/fonts/static/Alegreya-Regular.ttf
+        - asset: assets/fonts/static/Alegreya-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/static/Alegreya-Black.ttf
+          weight: 900
+        - asset: assets/fonts/static/Alegreya-ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/static/Alegreya-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/static/Alegreya-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/static/Alegreya-Italic.ttf
+          style: italic
+        - asset: assets/fonts/static/Alegreya-BoldItalic.ttf
+          weight: 700
+          style: italic
+        - asset: assets/fonts/static/Alegreya-BlackItalic.ttf
+          weight: 900
+          style: italic
+        - asset: assets/fonts/static/Alegreya-ExtraBoldItalic.ttf
+          weight: 800
+          style: italic
+        - asset: assets/fonts/static/Alegreya-MediumItalic.ttf
+          weight: 500
+          style: italic
+        - asset: assets/fonts/static/Alegreya-SemiBoldItalic.ttf
+          weight: 600
+          style: italic
