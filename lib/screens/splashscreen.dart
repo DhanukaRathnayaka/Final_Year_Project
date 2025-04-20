@@ -1,8 +1,10 @@
-import 'package:safespace/main.dart';
 import 'package:flutter/material.dart';
 import 'package:safespace/screens/welcome_screen.dart';
 import 'package:safespace/screens/onboarding_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+// ignore_for_file: use_build_context_synchronously
+
+
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});

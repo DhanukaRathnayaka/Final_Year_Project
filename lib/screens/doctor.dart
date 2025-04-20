@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:safespace/widgets/doctor_card.dart';
-import 'package:safespace/dummydata/dummy_data.dart';
+
 
 void main() {
   runApp(CounsellorsApp());
@@ -11,7 +11,6 @@ class CounsellorsApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       home: CounsellorsHomePage(),
-      debugShowCheckedModeBanner: false,
     );
   }
 }

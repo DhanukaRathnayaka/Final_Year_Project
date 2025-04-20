@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:safespace/screens/doctor.dart';
 import 'package:safespace/screens/profile.dart';
 import 'package:safespace/screens/entertainment.dart';
-import 'package:safespace/screens/notifications.dart';
-import 'package:safespace/screens/chatbot.dart'; // Import ChatBotPage
 import 'package:safespace/widgets/navbar.dart'; // Import NavBar widget
 import 'package:safespace/screens/dashboard_screen.dart'; // Import DashboardScreen
+
 
 class HomeScreen extends StatefulWidget {
   final String username;
