@@ -41,48 +41,48 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDnPAlgKDs_e4kR0KZ5t5oVihyLo5H6U3I',
-    appId: '1:1085174797082:web:787d8a11cd8abc7c9112a3',
-    messagingSenderId: '1085174797082',
-    projectId: 'safespace-c696b',
-    authDomain: 'safespace-c696b.firebaseapp.com',
-    storageBucket: 'safespace-c696b.firebasestorage.app',
-    measurementId: 'G-RQVZ5EKBJP',
+    apiKey: 'AIzaSyDFss96hbUSOFd7voS1vtln6jTy7Q7fBk8',
+    appId: '1:829950829288:web:9e717eb6bb3f0693bddf5d',
+    messagingSenderId: '829950829288',
+    projectId: 'safespace-dd683',
+    authDomain: 'safespace-dd683.firebaseapp.com',
+    storageBucket: 'safespace-dd683.firebasestorage.app',
+    measurementId: 'G-ZVX12KXGGH',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBrjjkG3-cpvyrCD5jvRe4y1xTr6-M0ntM',
-    appId: '1:1085174797082:android:ec6f7c13d04810689112a3',
-    messagingSenderId: '1085174797082',
-    projectId: 'safespace-c696b',
-    storageBucket: 'safespace-c696b.firebasestorage.app',
+    apiKey: 'AIzaSyCAk3My9U5bfB1YK1WPP11b_uQMoiwwFhs',
+    appId: '1:829950829288:android:439619502a9a8b83bddf5d',
+    messagingSenderId: '829950829288',
+    projectId: 'safespace-dd683',
+    storageBucket: 'safespace-dd683.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDO1BlfKj0h53MfWPvqIGrHe8ELzZAvfhA',
-    appId: '1:1085174797082:ios:0d2859503adc9a1a9112a3',
-    messagingSenderId: '1085174797082',
-    projectId: 'safespace-c696b',
-    storageBucket: 'safespace-c696b.firebasestorage.app',
+    apiKey: 'AIzaSyAyKj9ohrcszXMpU_UWR9g-lLV7C3e0HOk',
+    appId: '1:829950829288:ios:4533637e0ebe94bfbddf5d',
+    messagingSenderId: '829950829288',
+    projectId: 'safespace-dd683',
+    storageBucket: 'safespace-dd683.firebasestorage.app',
     iosBundleId: 'com.example.safespace',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyDO1BlfKj0h53MfWPvqIGrHe8ELzZAvfhA',
-    appId: '1:1085174797082:ios:0d2859503adc9a1a9112a3',
-    messagingSenderId: '1085174797082',
-    projectId: 'safespace-c696b',
-    storageBucket: 'safespace-c696b.firebasestorage.app',
+    apiKey: 'AIzaSyAyKj9ohrcszXMpU_UWR9g-lLV7C3e0HOk',
+    appId: '1:829950829288:ios:4533637e0ebe94bfbddf5d',
+    messagingSenderId: '829950829288',
+    projectId: 'safespace-dd683',
+    storageBucket: 'safespace-dd683.firebasestorage.app',
     iosBundleId: 'com.example.safespace',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyDnPAlgKDs_e4kR0KZ5t5oVihyLo5H6U3I',
-    appId: '1:1085174797082:web:97458aca701afb1a9112a3',
-    messagingSenderId: '1085174797082',
-    projectId: 'safespace-c696b',
-    authDomain: 'safespace-c696b.firebaseapp.com',
-    storageBucket: 'safespace-c696b.firebasestorage.app',
-    measurementId: 'G-EVEQNB6T2S',
+    apiKey: 'AIzaSyDFss96hbUSOFd7voS1vtln6jTy7Q7fBk8',
+    appId: '1:829950829288:web:d2b1ce2b6c014ea4bddf5d',
+    messagingSenderId: '829950829288',
+    projectId: 'safespace-dd683',
+    authDomain: 'safespace-dd683.firebaseapp.com',
+    storageBucket: 'safespace-dd683.firebasestorage.app',
+    measurementId: 'G-CE1STLP5KW',
   );
 }
