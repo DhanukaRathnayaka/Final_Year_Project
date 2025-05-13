@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:safespace/theme/theme.dart';
-import 'package:safespace/screens/signin_screen.dart';
-import 'package:safespace/screens/signup_screen.dart';
 import 'package:safespace/widgets/welcome_button.dart';
 import 'package:safespace/widgets/custom_scaffold.dart';
+import 'package:safespace/Authentication/signup_screen.dart';
+import 'package:safespace/Authentication/signin_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -33,7 +33,7 @@ class WelcomeScreen extends StatelessWidget {
                             )),
                         TextSpan(
                             text:
-                                '\nwelcome YOU to SafeSpace, your personal mental health\n'
+                                '\n your personal mental health\n'
                                 'and wellness companion. We are here to support you\n',
                             style: TextStyle(
                               fontSize: 20,

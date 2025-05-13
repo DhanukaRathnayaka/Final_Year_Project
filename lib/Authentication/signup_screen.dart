@@ -3,8 +3,8 @@ import 'package:icons_plus/icons_plus.dart';
 import 'package:safespace/theme/theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:safespace/screens/signin_screen.dart';
 import 'package:safespace/widgets/custom_scaffold.dart';
+import 'package:safespace/Authentication/signin_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});

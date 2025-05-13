@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:safespace/screens/welcome_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:safespace/Authentication/welcome_screen.dart';
 
 class ChatOnboardingScreen extends StatefulWidget {
   const ChatOnboardingScreen({super.key});

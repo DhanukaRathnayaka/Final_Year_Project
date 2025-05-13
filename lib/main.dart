@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:safespace/screens/home_screen.dart';
-import 'package:safespace/screens/signin_screen.dart';
-import 'package:safespace/screens/signup_screen.dart';
-import 'package:safespace/screens/welcome_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:safespace/screens/chatbot.dart'; // For example, ChatBotPage
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:safespace/Main4screens/home_screen.dart';
+import 'package:safespace/Authentication/welcome_screen.dart';
+
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,15 +31,10 @@ class MyApp extends StatelessWidget {
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
-  Future<bool> _checkIfLoggedIn() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('onboardingComplete') ?? false;
-  }
-
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<bool>(
-      future: _checkIfLoggedIn(),
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Scaffold(
@@ -48,10 +42,14 @@ class AuthWrapper extends StatelessWidget {
           );
         }
 
-        if (snapshot.data == true) {
-          return HomeScreen(username: 'User');  // Change this to your username logic
+        if (snapshot.hasData && snapshot.data != null) {
+          // User is signed in
+          final user = snapshot.data!;
+          final fullName = user.displayName ?? 'User'; // adjust if you store name elsewhere
+          return HomeScreen(username: fullName);
         } else {
-          return WelcomeScreen();  // Navigate to WelcomeScreen
+          // User is not signed in
+          return WelcomeScreen();
         }
       },
     );

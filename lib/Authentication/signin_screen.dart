@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:safespace/theme/theme.dart';
 import 'package:icons_plus/icons_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:safespace/screens/home_screen.dart';
-import 'package:safespace/screens/signup_screen.dart';
 import 'package:safespace/widgets/custom_scaffold.dart';
+import 'package:safespace/Main4screens/home_screen.dart';
+import 'package:safespace/Authentication/signup_screen.dart';
 
 
 

@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart'; // For storing images
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:safespace/Authentication/welcome_screen.dart'; // For storing images
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -383,18 +384,3 @@ class ProfileOptionTile extends StatelessWidget {
   }
 }
 
-class WelcomeScreen extends StatelessWidget {
-  const WelcomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Welcome'),
-      ),
-      body: const Center(
-        child: Text('Welcome to the app!'),
-      ),
-    );
-  }
-}
