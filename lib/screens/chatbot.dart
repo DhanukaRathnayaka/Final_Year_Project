@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:safespace/services/chat_service.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:safespace/chatbackend/services/chat_services.dart';
 
 
 class ChatBotScreen extends StatefulWidget {
@@ -11,9 +11,9 @@ class ChatBotScreen extends StatefulWidget {
 class _ChatBotScreenState extends State<ChatBotScreen> {
   final TextEditingController _controller = TextEditingController();
   List<Map<String, String>> messages = [];
+  bool isLoading = false;
 
-  // Set your model directly here
-  final String selectedModel = "LLaMA 3.3 Turbo";
+  String selectedModel = "Mistral AI"; // Fixed model
 
   void handleSend() async {
     String userInput = _controller.text.trim();
@@ -22,12 +22,21 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     setState(() {
       messages.add({"sender": "user", "text": userInput});
       _controller.clear();
+      isLoading = true;
     });
+
+    // Add a temporary "thinking..." message
+    messages.add({"sender": "bot", "text": "Thinking..."});
+    setState(() {});
 
     String botReply = await ChatService.sendMessage(userInput, selectedModel);
 
+    // Remove the "Thinking..." placeholder
+    messages.removeLast();
+
     setState(() {
       messages.add({"sender": "bot", "text": botReply});
+      isLoading = false;
     });
   }
 
@@ -50,7 +59,6 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       ),
       body: Column(
         children: [
-          // 💬 Removed model dropdown UI
           Expanded(
             child: ListView.builder(
               padding: EdgeInsets.all(10),
@@ -99,6 +107,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 Expanded(
                   child: TextField(
                     controller: _controller,
+                    enabled: !isLoading,
                     decoration: InputDecoration(
                       hintText: "Type something to share...",
                       filled: true,
@@ -112,13 +121,22 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 ),
                 SizedBox(width: 8),
                 ElevatedButton(
-                  onPressed: handleSend,
+                  onPressed: isLoading ? null : handleSend,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFF26A69A),
                     shape: CircleBorder(),
                     padding: EdgeInsets.all(12),
                   ),
-                  child: Icon(Icons.send, color: Colors.white),
+                  child: isLoading
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Icon(Icons.send, color: Colors.white),
                 ),
               ],
             ),
