@@ -1,0 +1,28 @@
+name: safespace
+description: "A new Flutter project."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  intl: ^0.20.2
+  line_icons: ^2.0.3
+  google_nav_bar: ^5.0.7
+  flutter_markdown: ^0.7.7+1
+  http: ^1.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  assets:
+    - assets/images/day_bg.jpg
+    - assets/images/night_bg.jpg
+    - assets/images/profile.jpg
