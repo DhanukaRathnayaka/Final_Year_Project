@@ -3,15 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:line_icons/line_icons.dart';
 import 'package:safespace/screens/chatbot.dart';
 import 'package:safespace/screens/notification.dart';
+import 'package:safespace/authentication/auth_service.dart';
+
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final bool isGuest;
+  const HomeScreen({super.key, this.isGuest = false});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final _authService = AuthService();
   String get _backgroundImage {
     final hour = DateTime.now().hour;
     return hour >= 18 || hour < 6
@@ -22,6 +26,33 @@ class _HomeScreenState extends State<HomeScreen> {
   String get _formattedDate {
     return DateFormat('dd MMM yyyy').format(DateTime.now());
   }
+
+ String get _userGreeting {
+  if (widget.isGuest) return "Hello Guest";
+  
+  try {
+    // First try to get the username from user metadata
+    final metadata = _authService.getCurrentUserMetadata();
+    final username = metadata?['username'] as String?;
+    
+    if (username != null && username.isNotEmpty) {
+      return "Hello $username";
+    }
+    
+    // Fallback to email if username not available
+    final email = _authService.getCurrentUserEmail();
+    if (email != null) {
+      final name = email.split('@').first;
+      return "Hello $name";
+    }
+    
+    return "Hello User";
+  } catch (e) {
+    // Handle any potential errors gracefully
+    debugPrint('Error getting user greeting: $e');
+    return "Hello User";
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -48,11 +79,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const CircleAvatar(
+                        CircleAvatar(
                           radius: 24,
-                          backgroundImage: AssetImage(
-                            'assets/images/profile.jpg',
-                          ),
+                          backgroundImage: widget.isGuest
+                              ? const AssetImage('assets/images/guest.png')
+                              : const AssetImage('assets/images/profile.jpg'),
                         ),
                         Text(
                           _formattedDate,
@@ -61,21 +92,20 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: Colors.white,
                           ),
                         ),
-
-                        //here is the notification icon
                         IconButton(
                           icon: const Icon(LineIcons.bell, color: Colors.white),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const NotificationsPage(),
-                              ),
-                            );
-                          },
+                          onPressed: widget.isGuest
+                              ? () => _showGuestRestriction(context)
+                              : () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const NotificationsPage(),
+                                    ),
+                                  );
+                                },
                         ),
-
-                        // notification icon ends
                       ],
                     ),
                   ),
@@ -86,21 +116,24 @@ class _HomeScreenState extends State<HomeScreen> {
                     left: 16,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
+                      children: [
                         Text(
-                          " Hello Shala",
-                          style: TextStyle(
+                          _userGreeting,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Text(
-                          "We hope you are doing great today",
-                          style: TextStyle(color: Colors.white, fontSize: 14),
+                          widget.isGuest
+                              ? "Enjoy limited access as guest"
+                              : "We hope you are doing great today",
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 14),
                         ),
-                        SizedBox(height: 6),
+                        const SizedBox(height: 6),
                         Text(
                           "Thought of the day",
                           style: TextStyle(
@@ -118,14 +151,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
             // Chat Card
             GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ChatBotScreen(),
-                  ),
-                );
-              },
+              onTap: widget.isGuest
+                  ? () => _showGuestRestriction(context)
+                  : () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ChatBotScreen(),
+                        ),
+                      );
+                    },
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Container(
@@ -135,26 +170,36 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: Colors.teal[50],
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text(
-                    "Hello, Sarina!\nLet's Chat",
-                    style: TextStyle(fontSize: 16),
+                  child: Text(
+                    widget.isGuest
+                        ? "Sign in to access chatbot"
+                        : "Hello! Let's Chat",
+                    style: const TextStyle(fontSize: 16),
                   ),
                 ),
               ),
             ),
 
             // Suggestions Section
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  "AI Suggestions",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "AI Suggestions",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  if (widget.isGuest)
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pushReplacementNamed(context, '/login');
+                      },
+                      child: const Text('Sign In'),
+                    ),
+                ],
               ),
             ),
-
 
             const SizedBox(height: 10),
 
@@ -162,18 +207,30 @@ class _HomeScreenState extends State<HomeScreen> {
             _buildSuggestionCard(
               icon: Icons.visibility_outlined,
               title: "Limit Exposure to Screens",
-              subtitle: "Control your scoring",
+              subtitle: "Control your screen time",
               iconColor: Colors.green,
+              isLocked: widget.isGuest,
             ),
             _buildSuggestionCard(
               icon: Icons.bed,
               title: "Pillow Improvement",
               subtitle: "Change your pillows",
               iconColor: Colors.orange,
+              isLocked: widget.isGuest,
             ),
           ],
         ),
       ),
+      floatingActionButton: widget.isGuest
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.pushReplacementNamed(context, '/login');
+              },
+              icon: const Icon(Icons.login),
+              label: const Text('Sign In'),
+              backgroundColor: Colors.blue,
+            )
+          : null,
     );
   }
 
@@ -182,6 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required String title,
     required String subtitle,
     required Color iconColor,
+    bool isLocked = false,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -206,7 +264,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: iconColor.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: iconColor),
+              child: Icon(
+                isLocked ? Icons.lock_outline : icon,
+                color: isLocked ? Colors.grey : iconColor,
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -215,22 +276,54 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
+                      color: isLocked ? Colors.grey : Colors.black,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    subtitle,
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    isLocked ? "Sign in to view details" : subtitle,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isLocked ? Colors.grey[400] : Colors.grey[600],
+                    ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, size: 16),
+            Icon(
+              isLocked ? Icons.lock : Icons.arrow_forward_ios,
+              size: 16,
+              color: isLocked ? Colors.grey : null,
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showGuestRestriction(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Guest Mode Restriction'),
+        content: const Text(
+            'Please sign in to access all features and personalized content.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Later'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushReplacementNamed(context, '/login');
+            },
+            child: const Text('Sign In Now'),
+          ),
+        ],
       ),
     );
   }

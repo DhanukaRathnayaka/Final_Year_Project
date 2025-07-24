@@ -11,5 +11,5 @@ List<Widget> screensWithTheme() => [
   HomeScreen(),
   EntertainmentScreen(),
   CounsellorScreen(),
-  ProfileScreen(),
+  ProfilePage(),
 ];

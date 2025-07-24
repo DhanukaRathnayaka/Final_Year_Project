@@ -15,6 +15,7 @@ dependencies:
   google_nav_bar: ^5.0.7
   flutter_markdown: ^0.7.7+1
   http: ^1.4.0
+  supabase_flutter: ^2.9.1
 
 dev_dependencies:
   flutter_test:
@@ -22,6 +23,7 @@ dev_dependencies:
   flutter_lints: ^5.0.0
 
 flutter:
+  uses-material-design: true
   assets:
     - assets/images/day_bg.jpg
     - assets/images/night_bg.jpg

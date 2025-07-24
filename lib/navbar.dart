@@ -5,11 +5,13 @@ import 'package:google_nav_bar/google_nav_bar.dart';
 class NavBar extends StatelessWidget {
   final int selectedIndex;
   final Function(int) onTabChange;
+  final bool isGuest; // Added guest mode parameter
 
   const NavBar({
     Key? key,
     required this.selectedIndex,
     required this.onTabChange,
+    this.isGuest = false, // Default to false
   }) : super(key: key);
 
   @override
@@ -49,14 +51,31 @@ class NavBar extends StatelessWidget {
               GButton(
                 icon: LineIcons.stethoscope,
                 text: 'Doctors',
+                iconColor: isGuest ? Colors.grey : null, // Grey out if guest
+                textColor: isGuest ? Colors.grey : null, // Grey out if guest
               ),
-              const GButton(
+              GButton(
                 icon: LineIcons.user,
                 text: 'Profile',
+                iconColor: isGuest ? Colors.grey : null, // Grey out if guest
+                textColor: isGuest ? Colors.grey : null, // Grey out if guest
               ),
             ],
             selectedIndex: selectedIndex,
-            onTabChange: onTabChange,
+            onTabChange: (index) {
+              if (isGuest && (index == 2 || index == 3)) {
+                // Show restriction message for guests trying to access Doctors or Profile
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please sign in to access this feature'),
+                    duration: Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                return;
+              }
+              onTabChange(index);
+            },
           ),
         ),
       ),
