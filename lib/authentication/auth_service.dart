@@ -14,7 +14,8 @@ class AuthService {
         email: email,
         password: password,
         data: {
-          'username': username, // Stores username in user_metadata
+          'username': username,
+          'avatar_url': null, // Initialize as null // Stores username in user_metadata
         },
       );
     } on AuthException catch (e) {
