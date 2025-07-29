@@ -1,7 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:safespace/services/chat_service.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ChatBotScreen extends StatefulWidget {
   @override
@@ -10,14 +11,106 @@ class ChatBotScreen extends StatefulWidget {
 
 class _ChatBotScreenState extends State<ChatBotScreen> {
   final TextEditingController _controller = TextEditingController();
-  List<Map<String, String>> messages = [];
+  List<Map<String, dynamic>> messages = [];
   bool isLoading = false;
+  final supabase = Supabase.instance.client;
+  String? userId;
+  StreamSubscription<dynamic>? _messageSubscription;
+  String selectedModel = "Mistral AI";
 
-  String selectedModel = "Mistral AI"; // Fixed model
+  @override
+  void initState() {
+    super.initState();
+    _initializeUser();
+    _loadChatHistory();
+    _setupRealtime();
+  }
+
+  @override
+  void dispose() {
+    _messageSubscription?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _initializeUser() async {
+    final user = supabase.auth.currentUser;
+    setState(() {
+      userId = user?.id;
+    });
+  }
+
+  Future<void> _loadChatHistory() async {
+    if (userId == null) return;
+    
+    setState(() => isLoading = true);
+    
+    try {
+      final response = await supabase
+          .from('chat_messages')
+          .select()
+          .eq('user_id', userId!)
+          .order('created_at');
+      
+      setState(() {
+        messages = response.map((msg) => {
+          'sender': msg['is_bot'] ? 'bot' : 'user',
+          'text': msg['message'],
+          'timestamp': msg['created_at'],
+        }).toList();
+      });
+    } catch (e) {
+      print('Error loading chat history: $e');
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _storeMessage(String message, bool isBot) async {
+    if (userId == null) return;
+    
+    try {
+      await supabase.from('chat_messages').insert({
+        'user_id': userId,
+        'message': message,
+        'is_bot': isBot,
+      });
+    } catch (e) {
+      print('Error storing message: $e');
+    }
+  }
+
+  void _setupRealtime() {
+    _messageSubscription = supabase
+        .from('chat_messages')
+        .stream(primaryKey: ['id'])
+        .order('created_at')
+        .listen((List<Map<String, dynamic>> data) {
+          if (data.isNotEmpty) {
+            final newMsg = data.last;
+            if (newMsg['user_id'] == userId &&
+                !messages.any((m) => m['text'] == newMsg['message'])) {
+              setState(() {
+                messages.add({
+                  'sender': newMsg['is_bot'] ? 'bot' : 'user',
+                  'text': newMsg['message'],
+                  'timestamp': newMsg['created_at'],
+                });
+              });
+            }
+          }
+        });
+  }
+
+  String _formatTimestamp(dynamic timestamp) {
+    if (timestamp == null) return '';
+    DateTime time = timestamp is DateTime ? timestamp : DateTime.parse(timestamp);
+    return '${time.hour}:${time.minute.toString().padLeft(2, '0')}';
+  }
 
   void handleSend() async {
     String userInput = _controller.text.trim();
-    if (userInput.isEmpty) return;
+    if (userInput.isEmpty || userId == null) return;
 
     setState(() {
       messages.add({"sender": "user", "text": userInput});
@@ -25,19 +118,30 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       isLoading = true;
     });
 
-    // Add a temporary "thinking..." message
+    await _storeMessage(userInput, false);
+
     messages.add({"sender": "bot", "text": "Thinking..."});
     setState(() {});
 
-    String botReply = await ChatService.sendMessage(userInput, selectedModel);
-
-    // Remove the "Thinking..." placeholder
-    messages.removeLast();
-
-    setState(() {
-      messages.add({"sender": "bot", "text": botReply});
-      isLoading = false;
-    });
+    try {
+      String botReply = await ChatService.sendMessage(userInput, selectedModel);
+      messages.removeLast();
+      await _storeMessage(botReply, true);
+      
+      setState(() {
+        messages.add({"sender": "bot", "text": botReply});
+      });
+    } catch (e) {
+      messages.removeLast();
+      setState(() {
+        messages.add({
+          "sender": "bot", 
+          "text": "Sorry, I encountered an error. Please try again."
+        });
+      });
+    } finally {
+      setState(() => isLoading = false);
+    }
   }
 
   @override
@@ -66,35 +170,55 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               itemBuilder: (context, index) {
                 final msg = messages[index];
                 final isUser = msg['sender'] == 'user';
-                return Align(
-                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: EdgeInsets.symmetric(vertical: 6),
-                    padding: EdgeInsets.all(14),
-                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-                    decoration: BoxDecoration(
-                      color: isUser ? Color(0xFF80CBC4) : Colors.white,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(16),
-                        topRight: Radius.circular(16),
-                        bottomLeft: Radius.circular(isUser ? 16 : 0),
-                        bottomRight: Radius.circular(isUser ? 0 : 16),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.shade300,
-                          blurRadius: 4,
-                          offset: Offset(2, 2),
+                return Column(
+                  crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                  children: [
+                    if (index == 0 || 
+                        messages[index-1]['sender'] != msg['sender'] || 
+                        (msg['timestamp'] != null && 
+                         messages[index-1]['timestamp'] != null &&
+                         (DateTime.parse(msg['timestamp']).difference(
+                           DateTime.parse(messages[index-1]['timestamp'])
+                         ).inMinutes > 5)))
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Text(
+                          _formatTimestamp(msg['timestamp']),
+                          style: TextStyle(color: Colors.grey, fontSize: 12),
                         ),
-                      ],
-                    ),
-                    child: MarkdownBody(
-                      data: msg['text'] ?? '',
-                      styleSheet: MarkdownStyleSheet(
-                        p: TextStyle(fontSize: 16, height: 1.4),
+                      ),
+                    Align(
+                      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: EdgeInsets.symmetric(vertical: 6),
+                        padding: EdgeInsets.all(14),
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width * 0.75),
+                        decoration: BoxDecoration(
+                          color: isUser ? Color(0xFF80CBC4) : Colors.white,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(16),
+                            topRight: Radius.circular(16),
+                            bottomLeft: Radius.circular(isUser ? 16 : 0),
+                            bottomRight: Radius.circular(isUser ? 0 : 16),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.shade300,
+                              blurRadius: 4,
+                              offset: Offset(2, 2),
+                            ),
+                          ],
+                        ),
+                        child: MarkdownBody(
+                          data: msg['text'] ?? '',
+                          styleSheet: MarkdownStyleSheet(
+                            p: TextStyle(fontSize: 16, height: 1.4),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 );
               },
             ),
@@ -117,6 +241,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                         borderSide: BorderSide.none,
                       ),
                     ),
+                    onSubmitted: (_) => handleSend(),
                   ),
                 ),
                 SizedBox(width: 8),

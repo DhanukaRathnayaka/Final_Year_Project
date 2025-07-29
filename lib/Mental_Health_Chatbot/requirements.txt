@@ -4,3 +4,4 @@ pydantic
 langchain
 langchain-together
 cohere
+langchain-community
