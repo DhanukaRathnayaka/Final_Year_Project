@@ -6,7 +6,14 @@ from groq import Groq
 from fastapi.middleware.cors import CORSMiddleware
 
 # Set your API keys
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
+from dotenv import load_dotenv
+
+
+# Load variables from .env file
+load_dotenv()
+
+# Access your key
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 # Initialize Groq client
 groq_client = Groq(api_key=GROQ_API_KEY)
