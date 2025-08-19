@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Access your key
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")  # Loaded from environment only. Do not hardcode secrets.
 
 # Initialize Groq client
 groq_client = Groq(api_key=GROQ_API_KEY)
