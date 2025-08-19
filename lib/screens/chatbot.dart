@@ -15,21 +15,22 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   bool isLoading = false;
   final supabase = Supabase.instance.client;
   String? userId;
-  StreamSubscription<dynamic>? _messageSubscription;
+  String? currentConversationId;
+  StreamSubscription<List<Map<String, dynamic>>>? _messageSubscription;
   String selectedModel = "Mistral AI";
 
   @override
   void initState() {
     super.initState();
     _initializeUser();
-    _loadChatHistory();
-    _setupRealtime();
+    _startNewConversation();
   }
 
   @override
   void dispose() {
     _messageSubscription?.cancel();
     _controller.dispose();
+    _endCurrentConversation();
     super.dispose();
   }
 
@@ -40,54 +41,86 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     });
   }
 
-  Future<void> _loadChatHistory() async {
-    if (userId == null) return;
-    
-    setState(() => isLoading = true);
-    
+  Future<void> _startNewConversation() async {
+    setState(() {
+      messages = [];
+      isLoading = true;
+    });
+
     try {
+      // Create a new conversation
       final response = await supabase
-          .from('chat_messages')
+          .from('conversations')
+          .insert({'user_id': userId})
           .select()
-          .eq('user_id', userId!)
-          .order('created_at');
+          .single();
       
       setState(() {
-        messages = response.map((msg) => {
-          'sender': msg['is_bot'] ? 'bot' : 'user',
-          'text': msg['message'],
-          'timestamp': msg['created_at'],
-        }).toList();
+        currentConversationId = response['id'] as String;
       });
+      
+      _setupRealtime();
     } catch (e) {
-      print('Error loading chat history: $e');
+      print('Error starting new conversation: $e');
     } finally {
       setState(() => isLoading = false);
     }
   }
+//mainnnnnass
+  Future<void> _endCurrentConversation() async {
+    if (currentConversationId != null) {
+      try {
+        await supabase
+            .from('conversations')
+            .update({'ended_at': DateTime.now().toIso8601String()})
+            .eq('id', currentConversationId!);
+      } catch (e) {
+        print('Error ending conversation: $e');
+      }
+    }
+  }
 
   Future<void> _storeMessage(String message, bool isBot) async {
-    if (userId == null) return;
+    if (userId == null || currentConversationId == null) return;
     
     try {
-      await supabase.from('chat_messages').insert({
+      await supabase.from('messages').insert({
+        'conversation_id': currentConversationId,
         'user_id': userId,
         'message': message,
         'is_bot': isBot,
       });
+
+      // Update conversation title with first message
+      if (messages.isEmpty && !isBot) {
+        await supabase
+            .from('conversations')
+            .update({'title': _generateConversationTitle(message)})
+            .eq('id', currentConversationId!);
+      }
     } catch (e) {
       print('Error storing message: $e');
     }
   }
 
+  String _generateConversationTitle(String firstMessage) {
+    final trimmed = firstMessage.trim();
+    return trimmed.length > 30 ? '${trimmed.substring(0, 30)}...' : trimmed;
+  }
+
   void _setupRealtime() {
     _messageSubscription = supabase
-        .from('chat_messages')
+        .from('messages')
         .stream(primaryKey: ['id'])
         .order('created_at')
         .listen((List<Map<String, dynamic>> data) {
-          if (data.isNotEmpty) {
-            final newMsg = data.last;
+          // Filter messages to only include current conversation
+          final conversationMessages = data.where(
+            (msg) => msg['conversation_id'] == currentConversationId
+          ).toList();
+
+          if (conversationMessages.isNotEmpty) {
+            final newMsg = conversationMessages.last;
             if (newMsg['user_id'] == userId &&
                 !messages.any((m) => m['text'] == newMsg['message'])) {
               setState(() {
@@ -110,7 +143,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
   void handleSend() async {
     String userInput = _controller.text.trim();
-    if (userInput.isEmpty || userId == null) return;
+    if (userInput.isEmpty || userId == null || currentConversationId == null) return;
 
     setState(() {
       messages.add({"sender": "user", "text": userInput});
