@@ -17,7 +17,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   String? userId;
   String? currentConversationId;
   StreamSubscription<List<Map<String, dynamic>>>? _messageSubscription;
-  String selectedModel = "Mistral AI";
+  String selectedModel = "Llama3-70B";
 
   @override
   void initState() {

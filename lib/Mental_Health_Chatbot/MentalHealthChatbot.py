@@ -2,13 +2,14 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import json
 import os
-from langchain_together import Together
-from langchain.llms import Cohere
+from groq import Groq
 from fastapi.middleware.cors import CORSMiddleware
 
 # Set your API keys
-TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY", "da20b11f2f9a2f51a62573f274f3a49a37002b67d1f6c511ed56de266ad0271b")
-COHERE_API_KEY = os.getenv("COHERE_API_KEY", "your_cohere_api_key_here")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
+
+# Initialize Groq client
+groq_client = Groq(api_key=GROQ_API_KEY)
 
 # Load mental health dataset
 try:
@@ -29,12 +30,10 @@ SIMPLE_RESPONSES = {
     "thanks": "**YOU'RE WELCOME!** I'm here if you need more support."
 }
 
-# Initialize AI models
-models = {
-    "Mistral AI": Together(model="mistralai/Mistral-7B-Instruct-v0.3", together_api_key=TOGETHER_API_KEY),
-    "LLaMA 3.3 Turbo": Together(model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free", together_api_key=TOGETHER_API_KEY),
-    "DeepSeek R1": Together(model="deepseek-ai/deepseek-r1-distill-llama-70b-free", together_api_key=TOGETHER_API_KEY),
-    "Cohere Command": Cohere(model="command-xlarge", cohere_api_key=COHERE_API_KEY)
+# Available Groq models
+MODELS = {
+    "Llama3-70B": "llama3-70b-8192",
+    "Mixtral-8x7B": "mixtral-8x7b-32768"
 }
 
 app = FastAPI()
@@ -49,7 +48,7 @@ app.add_middleware(
 
 class ChatRequest(BaseModel):
     message: str
-    model: str = "Mistral AI"
+    model: str = "Llama3-70B"  # Default to Llama 3 70B
 
 class ChatResponse(BaseModel):
     response: str
@@ -81,6 +80,19 @@ def clean_response(text: str) -> str:
     
     return text.strip()
 
+def query_groq(model: str, prompt: str, max_tokens: int = 512) -> str:
+    """Query Groq's API"""
+    response = groq_client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": "You are a compassionate mental health assistant."},
+            {"role": "user", "content": prompt}
+        ],
+        max_tokens=max_tokens,
+        temperature=0.7
+    )
+    return response.choices[0].message.content
+
 @app.post("/chat", response_model=ChatResponse)
 def chat_with_bot(request: ChatRequest):
     user_message = request.message.lower().strip()
@@ -97,7 +109,7 @@ def chat_with_bot(request: ChatRequest):
             break
     
     # Prepare the prompt
-    prompt = f"""You are a compassionate mental health assistant. Respond to this message:
+    prompt = f"""Respond to this message:
     "{request.message}"{context}
     
     Response requirements:
@@ -105,20 +117,21 @@ def chat_with_bot(request: ChatRequest):
     - Use a friendly, supportive tone
     - Avoid jargon or complex language
     - Provide practical advice or suggestions
-    - use only srilankan phonenumbers and help services do not use sinhala language
+    - Use only Sri Lankan phone numbers and help services
+    - Do not use Sinhala language
     - End with a hopeful note
     - Be kind and practical"""
     
     try:
-        model = models.get(request.model)
-        if not model:
+        if request.model not in MODELS:
             return ChatResponse(response=f"Error: Model {request.model} not found")
         
-        response = model.invoke(prompt, max_tokens=150)
+        response = query_groq(MODELS[request.model], prompt)
         cleaned_response = clean_response(response)
         return ChatResponse(response=cleaned_response)
     
     except Exception as e:
+        print(f"Error generating response: {e}")
         return ChatResponse(response="**I'M HERE FOR YOU.** Let's try that again. Could you rephrase your message?")
 
 if __name__ == "__main__":
