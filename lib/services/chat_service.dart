@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ChatService {
-  static const String _baseUrl = 'http://192.168.1.6:8000/chat';
+  static const String _baseUrl = 'http://localhost:8000/chat';
 
   static Future<String> sendMessage(String userMessage, String model) async {
     final url = Uri.parse(_baseUrl);
@@ -19,12 +19,12 @@ class ChatService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return data['response'] ?? "⚠️ No response from AI.";
+        return data['response'] ?? "⚠ No response from AI.";
       } else {
-        return "⚠️ Server Error: ${response.statusCode}";
+        return "⚠ Server Error: ${response.statusCode}";
       }
     } catch (e) {
-      return "⚠️ Network Error: $e";
+      return "⚠ Network Error: $e";
     }
   }
 }
