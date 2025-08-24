@@ -198,6 +198,47 @@ def assign_best_available_doctor(user_id: str, matching_doctors: list) -> Option
                 return doctor
     return None
 
+@app.get("/recommendations")
+async def get_recommendations(user_id: str):
+    """Get personalized recommendations for a user based on their mental state"""
+    try:
+        # Import the recommendation function from nchoice.py
+        from Suggestion.nchoice import get_all_recommendations
+        
+        # Get all recommendations
+        recommendations = get_all_recommendations(user_id)
+        
+        return {
+            "success": True,
+            "recommendations": recommendations
+        }
+    except Exception as e:
+        logger.error(f"Error getting recommendations: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error getting recommendations: {str(e)}"
+        )
+@app.get("/api/suggestions/{user_id}")
+async def get_suggestions(user_id: str):
+    """Get personalized suggestions for a user based on their mental state"""
+    try:
+        # Import the recommendation function from nchoice.py
+        from Suggestion.nchoice import get_all_recommendations
+        
+        # Get all recommendations
+        recommendations = get_all_recommendations(user_id)
+        
+        return {
+            "doctors": recommendations["doctors"],
+            "entertainments": recommendations["entertainments"]
+        }
+    except Exception as e:
+        logger.error(f"Error getting suggestions: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error getting suggestions: {str(e)}"
+        )
+
 @app.post("/recommend")
 async def recommend_doctor(req: UserRequest):
     """Recommend a doctor for a user based on their mental state"""

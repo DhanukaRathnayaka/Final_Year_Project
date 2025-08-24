@@ -3,33 +3,57 @@ import 'package:flutter/material.dart';
 import 'package:safespace/services/chat_service.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:line_icons/line_icons.dart';
 
 class ChatBotScreen extends StatefulWidget {
   @override
   _ChatBotScreenState createState() => _ChatBotScreenState();
 }
 
-class _ChatBotScreenState extends State<ChatBotScreen> {
+class _ChatBotScreenState extends State<ChatBotScreen>
+    with TickerProviderStateMixin {
   final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   List<Map<String, dynamic>> messages = [];
   bool isLoading = false;
+  bool isTyping = false;
   final supabase = Supabase.instance.client;
   String? userId;
   String? currentConversationId;
   StreamSubscription<List<Map<String, dynamic>>>? _messageSubscription;
   String selectedModel = "llama2-70b-4096";
 
+  // Animation controllers
+  late AnimationController _typingAnimationController;
+  late Animation<double> _typingAnimation;
+
   @override
   void initState() {
     super.initState();
+    _initializeAnimations();
     _initializeUser();
     _startNewConversation();
+  }
+
+  void _initializeAnimations() {
+    _typingAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    _typingAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _typingAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
   }
 
   @override
   void dispose() {
     _messageSubscription?.cancel();
     _controller.dispose();
+    _scrollController.dispose();
+    _typingAnimationController.dispose();
     _endCurrentConversation();
     super.dispose();
   }
@@ -62,12 +86,12 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       _setupRealtime();
     } catch (e) {
       print('Error starting new conversation: $e');
+      _showErrorSnackBar('Failed to start conversation. Please try again.');
     } finally {
       setState(() => isLoading = false);
     }
   }
 
-  //mainnnnnass
   Future<void> _endCurrentConversation() async {
     if (currentConversationId != null) {
       try {
@@ -105,210 +129,424 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   }
 
   String _generateConversationTitle(String firstMessage) {
-    final trimmed = firstMessage.trim();
-    return trimmed.length > 30 ? '${trimmed.substring(0, 30)}...' : trimmed;
+    if (firstMessage.length <= 30) return firstMessage;
+    return '${firstMessage.substring(0, 30)}...';
   }
 
   void _setupRealtime() {
+    if (currentConversationId == null) return;
+
     _messageSubscription = supabase
         .from('messages')
         .stream(primaryKey: ['id'])
+        .eq('conversation_id', currentConversationId!)
         .order('created_at')
         .listen((List<Map<String, dynamic>> data) {
-          // Filter messages to only include current conversation
-          final conversationMessages = data
-              .where((msg) => msg['conversation_id'] == currentConversationId)
-              .toList();
-
-          if (conversationMessages.isNotEmpty) {
-            final newMsg = conversationMessages.last;
-            if (newMsg['user_id'] == userId &&
-                !messages.any((m) => m['text'] == newMsg['message'])) {
-              setState(() {
-                messages.add({
-                  'sender': newMsg['is_bot'] ? 'bot' : 'user',
-                  'text': newMsg['message'],
-                  'timestamp': newMsg['created_at'],
-                });
-              });
-            }
-          }
+          setState(() {
+            messages = data
+                .map(
+                  (msg) => {
+                    'message': msg['message'],
+                    'is_bot': msg['is_bot'],
+                    'timestamp': msg['created_at'],
+                  },
+                )
+                .toList();
+          });
+          _scrollToBottom();
         });
   }
 
-  String _formatTimestamp(dynamic timestamp) {
-    if (timestamp == null) return '';
-    DateTime time = timestamp is DateTime
-        ? timestamp
-        : DateTime.parse(timestamp);
-    return '${time.hour}:${time.minute.toString().padLeft(2, '0')}';
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
-  void handleSend() async {
-    String userInput = _controller.text.trim();
-    if (userInput.isEmpty || userId == null || currentConversationId == null)
-      return;
+  Future<void> _sendMessage() async {
+    final message = _controller.text.trim();
+    if (message.isEmpty || isLoading) return;
 
     setState(() {
-      messages.add({"sender": "user", "text": userInput});
-      _controller.clear();
       isLoading = true;
+      isTyping = true;
     });
 
-    await _storeMessage(userInput, false);
+    _controller.clear();
 
-    messages.add({"sender": "bot", "text": "Thinking..."});
-    setState(() {});
+    // Add user message to UI immediately
+    final userMessage = {
+      'message': message,
+      'is_bot': false,
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+
+    setState(() {
+      messages.add(userMessage);
+    });
+
+    _scrollToBottom();
 
     try {
-      String botReply = await ChatService.sendMessage(userInput, selectedModel);
-      messages.removeLast();
-      await _storeMessage(botReply, true);
+      // Store user message
+      await _storeMessage(message, false);
 
-      setState(() {
-        messages.add({"sender": "bot", "text": botReply});
-      });
-    } catch (e) {
-      messages.removeLast();
-      setState(() {
-        messages.add({
-          "sender": "bot",
-          "text": "Sorry, I encountered an error. Please try again.",
+      // Start typing animation
+      _typingAnimationController.repeat();
+
+      // Send to AI service with user_id
+      final response = await ChatService.sendMessage(
+        message,
+        selectedModel,
+        userId: userId, // Pass the user_id
+      );
+
+      // Stop typing animation
+      _typingAnimationController.stop();
+
+      if (response.startsWith('⚠')) {
+        // Handle error response
+        _showErrorSnackBar(response.substring(2)); // Remove warning emoji
+      } else {
+        // Add bot message to UI immediately
+        final botMessage = {
+          'message': response,
+          'is_bot': true,
+          'timestamp': DateTime.now().toIso8601String(),
+        };
+
+        setState(() {
+          messages.add(botMessage);
         });
-      });
+
+        _scrollToBottom();
+
+        // Store bot response in background
+        await _storeMessage(response, true);
+
+        // Check if this is a goodbye message to trigger recommendations
+        final lowerResponse = response.toLowerCase();
+        if (lowerResponse.contains('goodbye') ||
+            lowerResponse.contains('bye') ||
+            lowerResponse.contains('take care')) {
+          // Show a loading message for recommendations
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      'Preparing your personalized recommendations...',
+                    ),
+                  ),
+                ],
+              ),
+              duration: Duration(seconds: 5),
+              backgroundColor: Colors.blue[600],
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error sending message: $e');
+      _showErrorSnackBar(
+        'Connection error. Please check your internet connection.',
+      );
     } finally {
-      setState(() => isLoading = false);
+      setState(() {
+        isLoading = false;
+        isTyping = false;
+      });
     }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.white),
+            SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.red[600],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF0F8F7),
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: Color(0xFFB2DFDB),
         title: Row(
           children: [
-            Icon(Icons.spa, color: Colors.white),
-            SizedBox(width: 10),
-            Text(
-              "SafeSpace Chat",
-              style: TextStyle(fontFamily: 'Arial Rounded', fontSize: 20),
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.blue[100],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(LineIcons.robot, color: Colors.blue[700], size: 24),
+            ),
+            SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'AI Companion',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+                Text(
+                  'Always here to listen',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+              ],
             ),
           ],
         ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh, color: Colors.blue[600]),
+            onPressed: isLoading ? null : _startNewConversation,
+            tooltip: 'New conversation',
+          ),
+        ],
       ),
       body: Column(
         children: [
+          // Messages area
           Expanded(
-            child: ListView.builder(
-              padding: EdgeInsets.all(10),
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                final msg = messages[index];
-                final isUser = msg['sender'] == 'user';
-                return Column(
-                  crossAxisAlignment: isUser
-                      ? CrossAxisAlignment.end
-                      : CrossAxisAlignment.start,
-                  children: [
-                    if (index == 0 ||
-                        messages[index - 1]['sender'] != msg['sender'] ||
-                        (msg['timestamp'] != null &&
-                            messages[index - 1]['timestamp'] != null &&
-                            (DateTime.parse(msg['timestamp'])
-                                    .difference(
-                                      DateTime.parse(
-                                        messages[index - 1]['timestamp'],
-                                      ),
-                                    )
-                                    .inMinutes >
-                                5)))
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Text(
-                          _formatTimestamp(msg['timestamp']),
-                          style: TextStyle(color: Colors.grey, fontSize: 12),
+            child: isLoading && messages.isEmpty
+                ? _buildLoadingState()
+                : _buildMessagesList(),
+          ),
+
+          // Typing indicator
+          if (isTyping) _buildTypingIndicator(),
+
+          // Input area
+          _buildInputArea(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.blue[50],
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Icon(LineIcons.robot, size: 48, color: Colors.blue[600]),
+          ),
+          SizedBox(height: 16),
+          Text(
+            'Starting conversation...',
+            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+          ),
+          SizedBox(height: 8),
+          CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessagesList() {
+    return ListView.builder(
+      controller: _scrollController,
+      padding: EdgeInsets.all(16),
+      itemCount: messages.length,
+      itemBuilder: (context, index) {
+        final message = messages[index];
+        return _buildMessageBubble(message, index);
+      },
+    );
+  }
+
+  Widget _buildMessageBubble(Map<String, dynamic> message, int index) {
+    final isBot = message['is_bot'] ?? false;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: isBot
+            ? MainAxisAlignment.start
+            : MainAxisAlignment.end,
+        children: [
+          if (isBot) ...[
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.blue[100],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(LineIcons.robot, color: Colors.blue[700], size: 20),
+            ),
+            SizedBox(width: 8),
+          ],
+          Flexible(
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.75,
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isBot ? Colors.white : Colors.blue[600],
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (isBot)
+                    MarkdownBody(
+                      data: message['message'] ?? '',
+                      styleSheet: MarkdownStyleSheet(
+                        p: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[800],
+                          height: 1.4,
+                        ),
+                        strong: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[900],
                         ),
                       ),
-                    Align(
-                      alignment: isUser
-                          ? Alignment.centerRight
-                          : Alignment.centerLeft,
-                      child: Container(
-                        margin: EdgeInsets.symmetric(vertical: 6),
-                        padding: EdgeInsets.all(14),
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.75,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isUser ? Color(0xFF80CBC4) : Colors.white,
-                          borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(16),
-                            topRight: Radius.circular(16),
-                            bottomLeft: Radius.circular(isUser ? 16 : 0),
-                            bottomRight: Radius.circular(isUser ? 0 : 16),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.shade300,
-                              blurRadius: 4,
-                              offset: Offset(2, 2),
-                            ),
-                          ],
-                        ),
-                        child: MarkdownBody(
-                          data: msg['text'] ?? '',
-                          styleSheet: MarkdownStyleSheet(
-                            p: TextStyle(fontSize: 16, height: 1.4),
-                          ),
-                        ),
+                    )
+                  else
+                    Text(
+                      message['message'] ?? '',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white,
+                        height: 1.4,
                       ),
                     ),
-                  ],
-                );
-              },
+                  SizedBox(height: 4),
+                  Text(
+                    _formatTimestamp(message['timestamp']),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isBot ? Colors.grey[500] : Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
+          if (!isBot) ...[
+            SizedBox(width: 8),
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.person, color: Colors.grey[600], size: 20),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypingIndicator() {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            color: Colors.white,
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.blue[100],
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(LineIcons.robot, color: Colors.blue[700], size: 20),
+          ),
+          SizedBox(width: 8),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    enabled: !isLoading,
-                    decoration: InputDecoration(
-                      hintText: "Type something to share...",
-                      filled: true,
-                      fillColor: Color(0xFFE0F2F1),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    onSubmitted: (_) => handleSend(),
-                  ),
+                AnimatedBuilder(
+                  animation: _typingAnimation,
+                  builder: (context, child) {
+                    return Row(
+                      children: List.generate(3, (index) {
+                        return Container(
+                          margin: EdgeInsets.symmetric(horizontal: 2),
+                          child: AnimatedContainer(
+                            duration: Duration(milliseconds: 300),
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[400],
+                              shape: BoxShape.circle,
+                            ),
+                            child: _typingAnimation.value > index * 0.3
+                                ? Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue[600],
+                                      shape: BoxShape.circle,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                        );
+                      }),
+                    );
+                  },
                 ),
                 SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: isLoading ? null : handleSend,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFF26A69A),
-                    shape: CircleBorder(),
-                    padding: EdgeInsets.all(12),
+                Text(
+                  'AI is typing...',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                    fontStyle: FontStyle.italic,
                   ),
-                  child: isLoading
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Icon(Icons.send, color: Colors.white),
                 ),
               ],
             ),
@@ -316,5 +554,95 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildInputArea() {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(25),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: TextField(
+                  controller: _controller,
+                  decoration: InputDecoration(
+                    hintText: 'Type your message...',
+                    hintStyle: TextStyle(color: Colors.grey[500]),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 15,
+                    ),
+                  ),
+                  maxLines: null,
+                  textCapitalization: TextCapitalization.sentences,
+                  onSubmitted: (_) => _sendMessage(),
+                ),
+              ),
+            ),
+            SizedBox(width: 12),
+            Container(
+              decoration: BoxDecoration(
+                color: isLoading ? Colors.grey[400] : Colors.blue[600],
+                borderRadius: BorderRadius.circular(25),
+              ),
+              child: IconButton(
+                icon: isLoading
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
+                      )
+                    : Icon(Icons.send, color: Colors.white),
+                onPressed: isLoading ? null : _sendMessage,
+                tooltip: 'Send message',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatTimestamp(String? timestamp) {
+    if (timestamp == null) return '';
+    try {
+      final dateTime = DateTime.parse(timestamp);
+      final now = DateTime.now();
+      final difference = now.difference(dateTime);
+
+      if (difference.inMinutes < 1) {
+        return 'Just now';
+      } else if (difference.inMinutes < 60) {
+        return '${difference.inMinutes}m ago';
+      } else if (difference.inHours < 24) {
+        return '${difference.inHours}h ago';
+      } else {
+        return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+      }
+    } catch (e) {
+      return '';
+    }
   }
 }

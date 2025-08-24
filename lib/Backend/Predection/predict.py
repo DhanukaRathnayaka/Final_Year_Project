@@ -3,6 +3,8 @@ from collections import defaultdict
 import groq
 import json
 from typing import Dict, List, Optional
+from datetime import datetime
+import uuid
 
 # 🔑 Add your Groq API key here
 GROQ_API_KEY = "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"
@@ -61,8 +63,14 @@ def analyze_user_mental_state(user_id: str) -> Optional[Dict]:
     """Analyze user's mental state using Groq API"""
     predictor = GroqMentalStatePredictor()
 
-    # Get user messages
-    messages = db.get_user_messages(user_id).data
+    # Get user messages from Supabase
+    try:
+        response = db.client.from_("messages").select("*").eq("user_id", user_id).execute()
+        messages = response.data
+    except Exception as e:
+        print(f"Error fetching messages: {e}")
+        return None
+
     if not messages:
         print("No messages found for this user")
         return None
@@ -122,3 +130,26 @@ if __name__ == "__main__":
             print("✅ Report saved to Supabase")
         except Exception as e:
             print(f"❌ Error saving report: {e}")
+
+
+def analyze_and_store(user_id: str) -> Optional[Dict]:
+    """Run analysis for a user, store the mental state report in Supabase and return the report."""
+    report = analyze_user_mental_state(user_id)
+    if not report:
+        return None
+
+    try:
+        payload = {
+            "user_id": user_id,
+            "report": json.dumps(report),
+            "dominant_state": report["dominant_state"],
+            "confidence": report["confidence"],
+            "created_at": datetime.now().isoformat()
+        }
+        # Use the shared db client to persist the report
+        db.client.from_("mental_state_reports").insert(payload).execute()
+        print("✅ Report saved to Supabase from analyze_and_store")
+    except Exception as e:
+        print(f"❌ Error saving report in analyze_and_store: {e}")
+
+    return report

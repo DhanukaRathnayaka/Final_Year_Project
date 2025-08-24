@@ -1,7 +1,129 @@
 import os
 import uuid
+import groq
+import json
+from collections import defaultdict
 from datetime import datetime
 from supabase import create_client, Client
+from typing import Dict, List, Optional
+
+# Initialize Groq client
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
+
+# Mental state predictor
+class GroqMentalStatePredictor:
+    def __init__(self):
+        self.client = groq.Client(api_key=GROQ_API_KEY)
+        self.mental_conditions = [
+            "happy/positive",
+            "stressed/anxious",
+            "depressed/sad",
+            "angry/frustrated",
+            "neutral/calm",
+            "confused/uncertain",
+            "excited/energetic"
+        ]
+
+    def predict(self, message: str) -> Dict[str, float]:
+        """Predict mental state from a single message using Groq"""
+        prompt = f"""
+        Analyze the following message and classify the writer's mental state.
+        Only respond with ONE of these exact conditions:
+        {", ".join(self.mental_conditions)}
+        
+        Message: "{message}"
+        
+        Also provide a confidence score between 0.7 and 1.0.
+        
+        Return your response in this exact JSON format:
+        {{
+            "prediction": "selected_condition",
+            "confidence": 0.85
+        }}
+        """
+        try:
+            response = self.client.chat.completions.create(
+                model="llama3-8b-8192",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                max_tokens=100,
+                response_format={"type": "json_object"}
+            )
+
+            result = json.loads(response.choices[0].message.content)
+            return {
+                "prediction": result["prediction"],
+                "confidence": float(result["confidence"])
+            }
+        except Exception as e:
+            print(f"Prediction error: {e}")
+            return {"prediction": "neutral/calm", "confidence": 0.7}
+
+def analyze_user_mental_state(user_id: str) -> Optional[Dict]:
+    """Analyze user's mental state using Groq API"""
+    predictor = GroqMentalStatePredictor()
+
+    # Get user messages from Supabase
+    try:
+        response = supabase.table("messages").select("*").eq("user_id", user_id).execute()
+        messages = response.data
+    except Exception as e:
+        print(f"Error fetching messages: {e}")
+        return None
+
+    if not messages:
+        print("No messages found for this user")
+        return None
+
+    print("\n📩 All Messages Fetched:")
+    for i, msg in enumerate(messages, 1):
+        timestamp = msg.get("created_at", "No timestamp")
+        print(f"{i}. [{timestamp}] {msg['message']}")
+
+    state_counts = defaultdict(int)
+    confidence_sum = 0
+    recent_messages = messages[-20:]  # last 20 messages for analysis
+
+    # Analyze individual messages
+    for msg in recent_messages:
+        result = predictor.predict(msg['message'])
+        state_counts[result['prediction']] += 1
+        confidence_sum += result['confidence']
+
+    total_messages = len(recent_messages)
+    dominant_state = max(state_counts, key=state_counts.get)
+    avg_confidence = confidence_sum / total_messages
+
+    if state_counts[dominant_state] / total_messages < 0.4:
+        dominant_state = "mixed/no_clear_pattern"
+
+    report = {
+        "user_id": user_id,
+        "total_messages_analyzed": total_messages,
+        "dominant_state": dominant_state,
+        "confidence": round(avg_confidence, 2),
+        "state_distribution": dict(state_counts),
+    }
+
+    print("\n🧠 Mental State Analysis Report")
+    print(f"👤 User: {user_id}")
+    print(f"🔍 Messages Analyzed: {report['total_messages_analyzed']}")
+    print(f"📊 State Distribution: {report['state_distribution']}")
+    print(f"🎯 Dominant State: {report['dominant_state'].upper()} ({report['confidence']:.0%} confidence)")
+
+    try:
+        supabase.table("mental_state_reports").insert({
+            "user_id": user_id,
+            "report": json.dumps(report),
+            "dominant_state": report["dominant_state"],
+            "confidence": report["confidence"],
+            "created_at": datetime.now().isoformat()
+        }).execute()
+        print("✅ Report saved to Supabase")
+    except Exception as e:
+        print(f"❌ Error saving report: {e}")
+
+    return report
 
 # Initialize Supabase client
 supabase_url = os.environ.get("SUPABASE_URL", "https://cpuhivcyhvqayzgdvdaw.supabase.co")
@@ -291,24 +413,68 @@ def recommend_entertainments(user_id, dominant_state):
     else:
         print(f"\n❌ No mental state reports found for user: {user_id}")
 
-def main():
-    """Main function to run the combined recommendation system"""
+def main(user_id: Optional[str] = None) -> Optional[Dict]:
+    """
+    Main function to run the combined recommendation system.
+    Can be run in two modes:
+    1. CLI mode (user_id=None): Prompts for user input
+    2. Automatic mode (user_id provided): Runs directly with given ID
+    
+    Returns a dict with mental state analysis and recommendations or None if failed
+    """
     print("=== COMBINED RECOMMENDATION SYSTEM ===")
     
-    # Get user input
-    user_id = input("Please enter the user ID: ").strip()
+    # If no user_id provided, get it from input (CLI mode)
+    if user_id is None:
+        user_id = input("Please enter the user ID: ").strip()
     
     if not user_id:
         print("User ID cannot be empty.")
-        return
+        return None
     
-    # Get user's dominant state
-    dominant_state = get_user_dominant_state(user_id)
+    # First run mental state analysis
+    report = analyze_user_mental_state(user_id)
+    if not report:
+        print(f"❌ Could not analyze mental state for user {user_id}")
+        return None
+
+    dominant_state = report["dominant_state"]
     
     # Automatically provide both recommendations
     recommend_doctors(user_id, dominant_state)
     recommend_entertainments(user_id, dominant_state)
+    
+    return {
+        "mental_state": report,
+        "dominant_state": dominant_state
+    }
 
-# Run the program
+def get_all_recommendations(user_id: str) -> Dict:
+    """
+    Get all recommendations for a user based on their mental state.
+    Returns a dictionary with doctors and entertainment recommendations.
+    """
+    # Get user's dominant state
+    dominant_state = get_user_dominant_state(user_id)
+    
+    if not dominant_state:
+        # If no dominant state, return empty recommendations
+        return {
+            "doctors": [],
+            "entertainments": []
+        }
+    
+    # Get doctor recommendations
+    doctors = get_doctors_by_dominant_state(dominant_state)
+    
+    # Get entertainment recommendations
+    entertainments = get_entertainments_by_dominant_state(dominant_state)
+    
+    return {
+        "doctors": doctors,
+        "entertainments": entertainments
+    }
+
+# Run the program in CLI mode if called directly
 if __name__ == "__main__":
     main()

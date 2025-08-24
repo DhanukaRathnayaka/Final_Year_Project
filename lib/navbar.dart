@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:line_icons/line_icons.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
+import 'package:flutter/services.dart';
 
 class NavBar extends StatelessWidget {
   final int selectedIndex;
@@ -37,7 +38,7 @@ class NavBar extends StatelessWidget {
             iconSize: 24,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             duration: const Duration(milliseconds: 400),
-            tabBackgroundColor: const Color.fromARGB(255, 119, 238, 152)!,
+            tabBackgroundColor: Theme.of(context).primaryColor.withOpacity(0.2),
             color: Colors.black,
             tabs: [
               const GButton(
@@ -63,6 +64,9 @@ class NavBar extends StatelessWidget {
             ],
             selectedIndex: selectedIndex,
             onTabChange: (index) {
+              // Add haptic feedback
+              HapticFeedback.lightImpact();
+              
               if (isGuest && (index == 2 || index == 3)) {
                 // Show restriction message for guests trying to access Doctors or Profile
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -70,6 +74,7 @@ class NavBar extends StatelessWidget {
                     content: Text('Please sign in to access this feature'),
                     duration: Duration(seconds: 2),
                     behavior: SnackBarBehavior.floating,
+                    margin: EdgeInsets.all(16),
                   ),
                 );
                 return;
