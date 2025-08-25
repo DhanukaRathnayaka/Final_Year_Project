@@ -1,6 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from Mental_Health_Chatbot.MentalHealthChatbot import router as chatbot_router
+# Import the suggestions router and include it so /generate_suggestions is available
+from Mental_Health_Chatbot import suggestion_generator
 from pydantic import BaseModel
 import logging
 import os
@@ -40,6 +42,8 @@ app.add_middleware(
 
 # Include the chatbot router with prefix
 app.include_router(chatbot_router, prefix="/api", tags=["chatbot"])
+# Include the suggestion generator router at root so endpoint is /generate_suggestions
+app.include_router(suggestion_generator.router)
 
 @app.get("/")
 async def root():

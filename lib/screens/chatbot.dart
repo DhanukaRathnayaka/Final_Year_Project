@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:safespace/services/chat_service.dart';
+import 'package:safespace/services/suggestion_service.dart';
+import 'package:safespace/screens/ai_suggestions_screen.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:line_icons/line_icons.dart';
@@ -93,15 +95,111 @@ class _ChatBotScreenState extends State<ChatBotScreen>
   }
 
   Future<void> _endCurrentConversation() async {
-    if (currentConversationId != null) {
-      try {
-        await supabase
-            .from('conversations')
-            .update({'ended_at': DateTime.now().toIso8601String()})
-            .eq('id', currentConversationId!);
-      } catch (e) {
-        print('Error ending conversation: $e');
+    if (currentConversationId == null) {
+      _showErrorSnackBar('No active conversation to end');
+      return;
+    }
+
+    try {
+      setState(() {
+        isLoading = true;
+      });
+
+      // End the conversation in the database
+      await supabase
+          .from('conversations')
+          .update({'ended_at': DateTime.now().toIso8601String()})
+          .eq('id', currentConversationId!);
+
+      // Generate AI suggestions based on the conversation
+      await _generateAndShowSuggestions();
+    } catch (e) {
+      _showErrorSnackBar('Failed to end conversation: ${e.toString()}');
+      print('Error ending conversation: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
       }
+    }
+  }
+
+  Future<void> _generateAndShowSuggestions() async {
+    if (messages.isEmpty) {
+      _showErrorSnackBar(
+        'No messages in conversation to generate suggestions from',
+      );
+      return;
+    }
+
+    try {
+      // Show loading indicator
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+              const SizedBox(width: 16),
+              const Text('Generating suggestions...'),
+            ],
+          ),
+          duration: const Duration(seconds: 10),
+          backgroundColor: Colors.blue,
+        ),
+      );
+
+      final suggestionService = SuggestionService();
+      final conversationMessages = messages
+          .map((msg) => msg['message'] as String)
+          .toList();
+
+      final suggestions = await suggestionService.fetchAISuggestions(
+        conversation: conversationMessages,
+        userId: userId!,
+        conversationId: currentConversationId!,
+      );
+
+      if (!mounted) return;
+
+      // Clear any existing snackbars
+      ScaffoldMessenger.of(context).clearSnackBars();
+
+      if (suggestions.suggestions.isEmpty) {
+        throw Exception('No suggestions were generated');
+      }
+
+      // Navigate to suggestions screen
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              AISuggestionsScreen(suggestions: suggestions.suggestions),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      String errorMessage = e.toString();
+      if (errorMessage.contains('OpenAI API error')) {
+        errorMessage =
+            'Unable to generate suggestions at this time. Please try again later.';
+      }
+      _showErrorSnackBar(errorMessage);
+      print('Error generating suggestions: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to generate suggestions: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -292,35 +390,71 @@ class _ChatBotScreenState extends State<ChatBotScreen>
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 1,
         title: Row(
           children: [
             Container(
-              padding: EdgeInsets.all(8),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Colors.blue[100],
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(LineIcons.robot, color: Colors.blue[700], size: 24),
             ),
-            SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'AI Companion',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                ),
-                Text(
-                  'Always here to listen',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-              ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'AI Companion',
+                    style: TextStyle(
+                      color: Colors.blue[900],
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  Text(
+                    'Always here to listen',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
-        backgroundColor: Colors.white,
-        elevation: 0,
         actions: [
+          TextButton.icon(
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('End Conversation?'),
+                  content: const Text(
+                    'Would you like to end this conversation and get personalized suggestions?',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _endCurrentConversation();
+                      },
+                      child: const Text('End Conversation'),
+                      style: TextButton.styleFrom(foregroundColor: Colors.blue),
+                    ),
+                  ],
+                ),
+              );
+            },
+            icon: Icon(LineIcons.doorOpen, color: Colors.blue[700]),
+            label: Text('End Chat', style: TextStyle(color: Colors.blue[700])),
+          ),
           IconButton(
             icon: Icon(Icons.refresh, color: Colors.blue[600]),
             onPressed: isLoading ? null : _startNewConversation,
