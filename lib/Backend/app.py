@@ -106,32 +106,27 @@ def get_doctors_by_dominant_state(dominant_state: str) -> list:
         return []
 
 def is_doctor_already_assigned(doctor_id: str) -> bool:
-    """Check if a doctor is already assigned to someone within the last 24 hours"""
+    """Check if a doctor is already assigned to someone"""
     try:
-        # Get timestamp for 24 hours ago
-        one_day_ago = (datetime.now() - timedelta(days=1)).isoformat()
-        
         response = (
             supabase.table("recommended_doctor")
-            .select("doctor_id, recommended_at")
+            .select("doctor_id")
             .eq("doctor_id", doctor_id)
-            .gt("recommended_at", one_day_ago)  # Only check recent assignments
             .execute()
         )
         
-        logger.info(f"Checking assignment for doctor {doctor_id}: {len(response.data)} recent assignments found")
+        logger.info(f"Checking assignment for doctor {doctor_id}: {len(response.data)} assignments found")
         return len(response.data) > 0
     except Exception as e:
         logger.error(f"Error checking doctor assignment: {str(e)}")
-        return True  # Assume assigned in case of error
+        return False  # Assume not assigned in case of error to allow assignment
 
 def store_recommended_doctor(user_id: str, doctor_id: str) -> Optional[dict]:
     """Store a doctor recommendation for a user"""
     try:
         response = supabase.table("recommended_doctor").insert({
             "user_id": user_id,
-            "doctor_id": doctor_id,
-            "recommended_at": datetime.now().isoformat()
+            "doctor_id": doctor_id
         }).execute()
         return response.data[0] if response.data else None
     except Exception as e:

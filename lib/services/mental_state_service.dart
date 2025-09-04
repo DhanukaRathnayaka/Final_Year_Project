@@ -1,11 +1,13 @@
 import 'dart:convert';
-import '../config.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class MentalStateService {
-  static const String _groqApiKey = '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';
+  // TODO: Move API key to environment variables or secure configuration
+  // This should be loaded from a secure source, not hardcoded
+  static const String _groqApiKey = String.fromEnvironment('GROQ_API_KEY',
+    defaultValue: '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');
   final SupabaseClient _supabase = Supabase.instance.client;
 
   static const List<String> mentalConditions = [
@@ -21,7 +23,7 @@ class MentalStateService {
   Future<Map<String, dynamic>> predict(String message) async {
     final prompt = """
     Analyze the following message and classify the writer's mental state.
-    Only respond with ONE of these exact conditions:" Do not take greetings to analyse."
+    Only respond with ONE of these exact conditions: Do not take greetings to analyse.
     ${mentalConditions.join(", ")}
     
     Message: "$message"

@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config.dart';
 
 class ChatService {
-  // Use IPv4 address instead of 192.168.1.6 for Android emulator compatibility
-  static const String _baseUrl = 'http://192.168.1.6:8000/api/chat';
+  // Use Config class for dynamic URL resolution
+  static String get _baseUrl => '${Config.apiBaseUrl}/api/chat';
 
   static Future<String> sendMessage(
     String userMessage,

@@ -1,16 +1,55 @@
-import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 
 class Config {
+  // Network IP for local network access
+  static const String networkIp = '192.168.1.6';
+  static const String port = '8000';
+  
   static String get apiBaseUrl {
-    if (Platform.isAndroid) {
-      // Android emulator needs special localhost address
-      return 'http://10.0.2.2:8000';
-    } else if (Platform.isIOS) {
-      // iOS simulator can use localhost
-      return 'http://localhost:8000';
+    if (kIsWeb) {
+      // Web platform - try network IP first, fallback to localhost
+      return 'http://$networkIp:$port';
     } else {
-      // Web or desktop platforms
-      return 'http://localhost:8000';
+      // Mobile platforms - use conditional import for Platform
+      return _getMobileApiUrl();
+    }
+  }
+
+  // Alternative localhost URL for development
+  static String get localhostApiUrl {
+    if (kIsWeb) {
+      return 'http://localhost:$port';
+    } else {
+      return _getMobileLocalhostUrl();
+    }
+  }
+
+  static String _getMobileApiUrl() {
+    // Use defaultTargetPlatform instead of Platform for better cross-platform support
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        // Android emulator/device - use network IP for real device, 10.0.2.2 for emulator
+        return 'http://$networkIp:$port';
+      case TargetPlatform.iOS:
+        // iOS simulator/device - use network IP
+        return 'http://$networkIp:$port';
+      default:
+        // Desktop or other platforms
+        return 'http://$networkIp:$port';
+    }
+  }
+
+  static String _getMobileLocalhostUrl() {
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        // Android emulator needs special localhost address
+        return 'http://10.0.2.2:$port';
+      case TargetPlatform.iOS:
+        // iOS simulator can use localhost
+        return 'http://localhost:$port';
+      default:
+        // Desktop or other platforms
+        return 'http://localhost:$port';
     }
   }
 

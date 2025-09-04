@@ -83,7 +83,7 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
       }
 
       final response = await http.post(
-        Uri.parse('http://192.168.1.6:8000/recommend_entertainment'),
+        Uri.parse('http://localhost:8000/recommend_entertainment'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ${user.id}',

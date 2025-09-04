@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../config.dart';
 
 class DoctorRecommendationService {
-  final String backendUrl = "http://192.168.1.6:8000/recommend"; // replace with deployed URL
+  String get backendUrl => "${Config.apiBaseUrl}/recommend";
 
   Future<Map<String, dynamic>?> getRecommendedDoctor() async {
     final user = Supabase.instance.client.auth.currentUser;
