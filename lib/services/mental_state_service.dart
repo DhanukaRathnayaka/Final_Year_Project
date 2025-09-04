@@ -208,8 +208,8 @@ class MentalStateService {
       }
     }
     
-    // Default to neutral/calm only as last resort with lower confidence
-    return {'prediction': 'neutral/calm', 'confidence': 0.6};
+    // Default to confused/uncertain instead of neutral/calm to avoid bias
+    return {'prediction': 'confused/uncertain', 'confidence': 0.6};
   }
 
   Future<Map<String, dynamic>> predict(String message) async {
@@ -289,7 +289,7 @@ Confidence should be between 0.7-1.0. Even for short messages, provide confident
             },
             {'role': 'user', 'content': enhancedPrompt}
           ],
-          'temperature': 0.8, // Increased for more varied responses
+          'temperature': 0.9, // Higher temperature for more diverse responses
           'max_tokens': 200,
           'response_format': {'type': 'json_object'}
         }),
@@ -311,8 +311,9 @@ Confidence should be between 0.7-1.0. Even for short messages, provide confident
         if (prediction == 'neutral/calm') {
           final keywordResult = keywordBasedAnalysis(message);
           // Only use neutral/calm if keyword analysis also suggests it with high confidence
-          if (keywordResult['prediction'] != 'neutral/calm' || 
-              keywordResult['confidence'] < 0.7) {
+          if (keywordResult['prediction'] != 'neutral/calm' ||
+              keywordResult['confidence'] < 0.8) {
+            print('Overriding neutral/calm with keyword analysis: ${keywordResult['prediction']}');
             return keywordResult;
           }
         }
@@ -427,9 +428,10 @@ Confidence should be between 0.7-1.0. Even for short messages, provide confident
       // Always select the most dominant state, never return mixed/no_clear_pattern
       String finalState = dominantStateEntry.key;
       
-      // If confidence is very low, default to neutral/calm
-      if (dominantStatePercentage < 0.2 && avgConfidence < 0.75) {
-        finalState = 'neutral/calm';
+      // Only default to neutral/calm if there's genuinely no clear pattern and very low confidence
+      if (dominantStatePercentage < 0.15 && avgConfidence < 0.7) {
+        // Instead of neutral/calm, use the most frequent state even if confidence is low
+        finalState = dominantStateEntry.key;
       }
 
       // Calculate trend analysis (comparing first half vs second half)

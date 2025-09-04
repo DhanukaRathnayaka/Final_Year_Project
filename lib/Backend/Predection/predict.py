@@ -26,37 +26,132 @@ class GroqMentalStatePredictor:
     def predict(self, message: str) -> Dict[str, float]:
         """Predict mental state from a single message using Groq"""
         prompt = f"""
-        Analyze the following message and classify the writer's mental state.
-        Only respond with ONE of these exact conditions:
+        You are an expert mental health analyst. Analyze the following message and classify the writer's emotional/mental state.
+        
+        CRITICAL INSTRUCTION: DO NOT DEFAULT TO NEUTRAL/CALM UNLESS THERE IS GENUINELY NO EMOTIONAL CONTENT.
+        
+        IMPORTANT GUIDELINES:
+        1. Analyze ALL messages, including short ones, greetings, and single words
+        2. Even brief messages like "hi", "ok", "no" can convey emotional tone
+        3. Look for subtle emotional indicators in tone, punctuation, and word choice
+        4. Consider context clues like exclamation marks, question marks, capitalization
+        5. Every message has some emotional undertone - find it
+        6. BE BOLD in your classifications - avoid the safe "neutral/calm" option
+        
+        CLASSIFICATION OPTIONS (choose exactly one):
         {", ".join(self.mental_conditions)}
+        
+        ANALYSIS GUIDELINES:
+        - "happy/positive": Joy, satisfaction, optimism, gratitude, excitement, enthusiastic greetings
+        - "stressed/anxious": Worry, pressure, nervousness, overwhelm, uncertain questions
+        - "depressed/sad": Sadness, hopelessness, emptiness, grief, flat/monotone responses
+        - "angry/frustrated": Anger, irritation, rage, resentment, short/abrupt responses
+        - "neutral/calm": ONLY for genuinely balanced, peaceful, matter-of-fact content
+        - "confused/uncertain": Doubt, bewilderment, indecision, questioning tone, hesitation
+        - "excited/energetic": High energy, enthusiasm, anticipation, exclamation marks, caps
+        
+        PUNCTUATION ANALYSIS:
+        - "!" → excited/energetic or angry/frustrated
+        - "?" → confused/uncertain
+        - "..." → depressed/sad or confused/uncertain
+        - ALL CAPS → angry/frustrated or excited/energetic
         
         Message: "{message}"
         
-        Also provide a confidence score between 0.7 and 1.0.
+        Provide confidence score between 0.7 and 1.0. Even for short messages, provide confident analysis.
         
         Return your response in this exact JSON format:
         {{
-            "prediction": "selected_condition",
+            "prediction": "exact_condition_from_list",
             "confidence": 0.85
         }}
         """
         try:
             response = self.client.chat.completions.create(
-                model="llama3-8b-8192",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-                max_tokens=100,
+                model="llama3-8b-8192",  # Use available Groq model
+                messages=[
+                    {"role": "system", "content": "You are an expert mental health analyst specializing in emotional state classification from text. BE BOLD in your classifications and avoid defaulting to neutral/calm."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.8,  # Increased for more varied responses
+                max_tokens=150,
                 response_format={"type": "json_object"}
             )
 
             result = json.loads(response.choices[0].message.content)
+            prediction = result.get("prediction", "")
+            
+            # Validate prediction is in allowed list
+            if prediction not in self.mental_conditions:
+                print(f"Invalid prediction: {prediction}, using keyword fallback")
+                return self._keyword_fallback(message)
+            
             return {
-                "prediction": result["prediction"],
-                "confidence": float(result["confidence"])
+                "prediction": prediction,
+                "confidence": float(result.get("confidence", 0.8))
             }
         except Exception as e:
             print(f"Prediction error: {e}")
-            return {"prediction": "neutral/calm", "confidence": 0.7}
+            return self._keyword_fallback(message)
+    
+    def _keyword_fallback(self, message: str) -> Dict[str, float]:
+        """Enhanced keyword-based fallback that avoids neutral/calm bias"""
+        message_lower = message.lower().strip()
+        
+        # Enhanced keyword mapping with more emotional indicators
+        emotion_keywords = {
+            "happy/positive": ["happy", "joy", "great", "good", "nice", "love", "awesome", "amazing", "wonderful", "excited", "yay", "yes!", "perfect", "brilliant", "fantastic", "smile", "laugh"],
+            "stressed/anxious": ["stressed", "anxious", "worried", "nervous", "panic", "overwhelmed", "pressure", "scared", "afraid", "tense", "can't", "help", "urgent", "deadline", "exam"],
+            "depressed/sad": ["sad", "depressed", "down", "tired", "exhausted", "lonely", "empty", "hopeless", "cry", "tears", "alone", "hurt", "pain", "lost", "give up", "..."],
+            "angry/frustrated": ["angry", "mad", "hate", "annoyed", "frustrated", "pissed", "damn", "shit", "fuck", "stupid", "idiot", "sick of", "fed up", "NO!", "stop"],
+            "confused/uncertain": ["confused", "don't know", "not sure", "maybe", "perhaps", "what", "how", "why", "?", "uncertain", "lost", "help me understand"],
+            "excited/energetic": ["excited", "can't wait", "amazing!", "awesome!", "yes!", "woohoo", "yay!", "pumped", "ready", "let's go", "!!!"]
+        }
+        
+        # Score each emotion based on keyword matches
+        scores = {}
+        for emotion, keywords in emotion_keywords.items():
+            score = 0
+            for keyword in keywords:
+                if keyword in message_lower:
+                    # Give higher weight to exact matches and punctuation
+                    if keyword.endswith('!') or keyword.endswith('?') or keyword.endswith('...'):
+                        score += 3
+                    else:
+                        score += 1
+            scores[emotion] = score
+        
+        # Special handling for punctuation and capitalization
+        if '!' in message:
+            if any(word in message_lower for word in ['no', 'stop', 'hate', 'angry']):
+                scores["angry/frustrated"] = scores.get("angry/frustrated", 0) + 2
+            else:
+                scores["excited/energetic"] = scores.get("excited/energetic", 0) + 2
+        
+        if '?' in message:
+            scores["confused/uncertain"] = scores.get("confused/uncertain", 0) + 2
+        
+        if '...' in message:
+            scores["depressed/sad"] = scores.get("depressed/sad", 0) + 2
+        
+        if message.isupper() and len(message) > 2:
+            scores["angry/frustrated"] = scores.get("angry/frustrated", 0) + 2
+        
+        # Find highest scoring emotion
+        if scores and max(scores.values()) > 0:
+            best_emotion = max(scores, key=scores.get)
+            confidence = min(0.9, 0.7 + (scores[best_emotion] * 0.1))
+            return {"prediction": best_emotion, "confidence": confidence}
+        
+        # If no keywords match, analyze message length and structure
+        if len(message_lower) <= 3:
+            if message_lower in ['ok', 'k', 'yes', 'no']:
+                return {"prediction": "neutral/calm", "confidence": 0.7}
+            else:
+                return {"prediction": "confused/uncertain", "confidence": 0.75}
+        
+        # Default to confused/uncertain instead of neutral/calm for unknown content
+        return {"prediction": "confused/uncertain", "confidence": 0.7}
 
 
 def analyze_user_mental_state(user_id: str) -> Optional[Dict]:
