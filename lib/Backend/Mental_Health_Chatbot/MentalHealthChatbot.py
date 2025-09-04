@@ -20,10 +20,10 @@ load_dotenv()
 
 # Available Groq models
 MODELS = {
-    "default": "llama3-70b-8192",
-    "Llama3-70B": "llama3-70b-8192",
-    "Mixtral-8x7B": "mixtral-8x7b-32768",
-    "llama2-70b-4096": "llama3-70b-8192"  # alias for frontend compatibility
+    "default": "gemma2-9b-it",
+    "Gemma2-9B": "gemma2-9b-it",
+    "Llama3.1-70B": "llama3.1-70b-versatile",
+    "llama2-70b-4096": "gemma2-9b-it"  # alias for frontend compatibility
 }
 
 # Initialize router

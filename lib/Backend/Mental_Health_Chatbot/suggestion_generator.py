@@ -63,7 +63,7 @@ async def generate_suggestions(request: ConversationRequest) -> SuggestionRespon
             # the new interface.
             # Try the new client API first
             response = client.chat.completions.create(
-                model="llama3-70b-8192",  # Using the same model as the chatbot
+                model="gemma2-9b-it",  # Using the same model as the chatbot
                 messages=[
                     {
                         "role": "system",
