@@ -9,7 +9,7 @@ import os
 from supabase import create_client, Client
 from dotenv import load_dotenv
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
 import uuid
 
 # Load environment variables
@@ -78,26 +78,48 @@ def get_user_dominant_state(user_id: str) -> Optional[str]:
 def get_doctors_by_dominant_state(dominant_state: str) -> list:
     """Get doctors that can handle a specific mental state"""
     try:
+        # First try to get doctors specifically matching this state
         response = (
             supabase.table("doctors")
             .select("*")
-            .or_(f"dominant_state.eq.{dominant_state},dominant_state.is.null")
+            .eq("dominant_state", dominant_state)
             .execute()
         )
-        return response.data if response.data else []
+        
+        matching_doctors = response.data if response.data else []
+        logger.info(f"Found {len(matching_doctors)} doctors matching state {dominant_state}")
+        
+        if not matching_doctors:
+            # If no specific matches, get doctors who can handle any state
+            response = (
+                supabase.table("doctors")
+                .select("*")
+                .is_("dominant_state", "null")
+                .execute()
+            )
+            matching_doctors = response.data if response.data else []
+            logger.info(f"Found {len(matching_doctors)} general doctors")
+            
+        return matching_doctors
     except Exception as e:
         logger.error(f"Error getting doctors: {str(e)}")
         return []
 
 def is_doctor_already_assigned(doctor_id: str) -> bool:
-    """Check if a doctor is already assigned to someone"""
+    """Check if a doctor is already assigned to someone within the last 24 hours"""
     try:
+        # Get timestamp for 24 hours ago
+        one_day_ago = (datetime.now() - timedelta(days=1)).isoformat()
+        
         response = (
             supabase.table("recommended_doctor")
-            .select("doctor_id")
+            .select("doctor_id, recommended_at")
             .eq("doctor_id", doctor_id)
+            .gt("recommended_at", one_day_ago)  # Only check recent assignments
             .execute()
         )
+        
+        logger.info(f"Checking assignment for doctor {doctor_id}: {len(response.data)} recent assignments found")
         return len(response.data) > 0
     except Exception as e:
         logger.error(f"Error checking doctor assignment: {str(e)}")
@@ -105,6 +127,16 @@ def is_doctor_already_assigned(doctor_id: str) -> bool:
 
 def store_recommended_doctor(user_id: str, doctor_id: str) -> Optional[dict]:
     """Store a doctor recommendation for a user"""
+    try:
+        response = supabase.table("recommended_doctor").insert({
+            "user_id": user_id,
+            "doctor_id": doctor_id,
+            "recommended_at": datetime.now().isoformat()
+        }).execute()
+        return response.data[0] if response.data else None
+    except Exception as e:
+        logger.error(f"Error storing doctor recommendation: {str(e)}")
+        return None
 
 @app.post("/recommend_entertainment")
 async def recommend_entertainment(request: UserRequest) -> dict:
@@ -184,22 +216,33 @@ async def recommend_entertainment(request: UserRequest) -> dict:
             status_code=500,
             detail=str(e)
         )
-    try:
-        response = supabase.table("recommended_doctor").insert({
-            "user_id": user_id,
-            "doctor_id": doctor_id
-        }).execute()
-        return response.data[0] if response.data else None
-    except Exception as e:
-        logger.error(f"Error storing recommendation: {str(e)}")
-        return None
 
 def assign_best_available_doctor(user_id: str, matching_doctors: list) -> Optional[dict]:
     """Find and assign the best available doctor from a list"""
+    logger.info(f"Attempting to assign doctor from {len(matching_doctors)} matching doctors")
+    
+    if not matching_doctors:
+        logger.warning("No matching doctors available to assign")
+        return None
+        
     for doctor in matching_doctors:
-        if not is_doctor_already_assigned(doctor["id"]):
-            if store_recommended_doctor(user_id, doctor["id"]):
+        doctor_id = doctor.get("id")
+        if not doctor_id:
+            logger.warning(f"Doctor record missing ID: {doctor}")
+            continue
+            
+        logger.info(f"Checking availability of doctor {doctor_id}")
+        if not is_doctor_already_assigned(doctor_id):
+            logger.info(f"Doctor {doctor_id} is available, attempting to store recommendation")
+            if store_recommended_doctor(user_id, doctor_id):
+                logger.info(f"Successfully assigned doctor {doctor_id} to user {user_id}")
                 return doctor
+            else:
+                logger.error(f"Failed to store recommendation for doctor {doctor_id}")
+        else:
+            logger.info(f"Doctor {doctor_id} is already assigned")
+            
+    logger.warning("No available doctors found after checking all matches")
     return None
 
 @app.get("/recommendations")

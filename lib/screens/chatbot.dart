@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:line_icons/line_icons.dart';
 import 'package:safespace/services/chat_service.dart';
-import 'package:safespace/services/suggestion_service.dart';
-import 'package:safespace/screens/ai_suggestions_screen.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:line_icons/line_icons.dart';
+import 'package:safespace/services/suggestion_service.dart';
+import 'package:safespace/services/mental_state_service.dart';
+import 'package:safespace/screens/ai_suggestions_screen.dart';
+
+
 
 class ChatBotScreen extends StatefulWidget {
   @override
@@ -24,6 +27,10 @@ class _ChatBotScreenState extends State<ChatBotScreen>
   String? currentConversationId;
   StreamSubscription<List<Map<String, dynamic>>>? _messageSubscription;
   String selectedModel = "llama2-70b-4096";
+
+  // Add MentalStateService instance
+  final MentalStateService _mentalStateService = MentalStateService();
+  bool _analysisTriggered = false;
 
   // Animation controllers
   late AnimationController _typingAnimationController;
@@ -71,6 +78,7 @@ class _ChatBotScreenState extends State<ChatBotScreen>
     setState(() {
       messages = [];
       isLoading = true;
+      _analysisTriggered = false; // Reset analysis trigger for new conversation
     });
 
     try {
@@ -122,6 +130,26 @@ class _ChatBotScreenState extends State<ChatBotScreen>
           isLoading = false;
         });
       }
+    }
+  }
+
+  // Add this method to check and trigger mental state analysis
+  Future<void> _checkAndTriggerMentalStateAnalysis() async {
+    if (userId == null || _analysisTriggered) return;
+
+    final hasEnoughMessages = await _mentalStateService.hasEnoughMessages(userId!);
+    
+    if (hasEnoughMessages) {
+      setState(() {
+        _analysisTriggered = true;
+      });
+      
+      // Run analysis in background
+      _mentalStateService.analyzeUserMentalState(userId!).then((_) {
+        print('Mental state analysis completed for user: $userId');
+      }).catchError((e) {
+        print('Error in mental state analysis: $e');
+      });
     }
   }
 
@@ -220,6 +248,11 @@ class _ChatBotScreenState extends State<ChatBotScreen>
             .from('conversations')
             .update({'title': _generateConversationTitle(message)})
             .eq('id', currentConversationId!);
+      }
+
+      // Check if we should trigger mental state analysis after storing a message
+      if (!isBot) {
+        _checkAndTriggerMentalStateAnalysis();
       }
     } catch (e) {
       print('Error storing message: $e');

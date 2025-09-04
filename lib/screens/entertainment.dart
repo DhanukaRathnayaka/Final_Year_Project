@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:line_icons/line_icons.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EntertainmentScreen extends StatefulWidget {
   const EntertainmentScreen({super.key});
@@ -83,7 +83,7 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
       }
 
       final response = await http.post(
-        Uri.parse('http://localhost:8000/recommend_entertainment'),
+        Uri.parse('http://192.168.1.6:8000/recommend_entertainment'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ${user.id}',

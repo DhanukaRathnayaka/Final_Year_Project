@@ -1,5 +1,6 @@
-import 'dart:convert';
 import 'dart:async';
+import 'dart:convert';
+import '../config.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -26,8 +27,8 @@ class SuggestionResponse {
 
 /// Service for handling AI suggestions and general recommendations
 class SuggestionService {
-  // Use 10.0.2.2 for Android emulator to access localhost
-  static const String _baseUrl = 'http://localhost:8000';
+  // Get base URL from config
+  static String get _baseUrl => Config.apiBaseUrl;
 
   const SuggestionService();
 

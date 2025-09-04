@@ -19,6 +19,7 @@ dependencies:
   image_picker: ^1.1.2
   just_audio: ^0.9.38
   audio_video_progress_bar: ^1.0.1
+  shared_preferences: ^2.5.3
 
 dev_dependencies:
   flutter_test:
