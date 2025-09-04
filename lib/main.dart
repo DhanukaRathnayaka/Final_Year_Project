@@ -6,10 +6,10 @@ import 'package:safespace/authentication/sign_up.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:safespace/authentication/auth_gate.dart';
 import 'package:safespace/authentication/login_page.dart';
-import 'package:safespace/services/mental_state_service.dart';
+
 
 // Add this to your main.dart or create a service locator
-MentalStateService mentalStateService = MentalStateService();
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
