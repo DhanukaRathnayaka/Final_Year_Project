@@ -133,75 +133,89 @@ def store_recommended_doctor(user_id: str, doctor_id: str) -> Optional[dict]:
         logger.error(f"Error storing doctor recommendation: {str(e)}")
         return None
 
-@app.post("/recommend_entertainment")
-async def recommend_entertainment(request: UserRequest) -> dict:
+@app.get("/recommend_entertainment/api/suggestions/{user_id}")
+async def recommend_entertainment(user_id: str) -> dict:
     """Get entertainment recommendations for a user based on their mental state"""
     try:
-        # Fetch user's dominant state
-        response = (
-            supabase.table('mental_state_reports')
-            .select('dominant_state, created_at')
-            .eq('user_id', request.user_id)
-            .order('created_at', desc=True)
-            .limit(1)
-            .execute()
-        )
+        # Import the recommendation function from nchoice.py
+        from Suggestion.nchoice import get_all_recommendations
         
-        if not response.data:
-            raise HTTPException(
-                status_code=404,
-                detail="No mental state report found for this user"
+        # Get all recommendations using the existing function
+        recommendations = get_all_recommendations(user_id)
+        
+        if not recommendations or not recommendations.get("entertainments"):
+            # If no recommendations, try to generate them
+            # Fetch user's dominant state
+            response = (
+                supabase.table('mental_state_reports')
+                .select('dominant_state, created_at')
+                .eq('user_id', user_id)
+                .order('created_at', desc=True)
+                .limit(1)
+                .execute()
             )
-
-        report = response.data[0]
-        user_dominant_state = report['dominant_state']
-        
-        # Fetch entertainments with matching dominant state
-        entertainment_response = (
-            supabase.table('entertainments')
-            .select('id, title, type, dominant_state, cover_img_url, description, media_file_url')
-            .eq('dominant_state', user_dominant_state)
-            .execute()
-        )
-        
-        if not entertainment_response.data:
-            return {
-                "success": True,
-                "recommendations": [],
-                "message": f"No entertainments found matching the '{user_dominant_state}' state."
-            }
             
-        # Store recommendations and prepare response
-        recommendations = []
-        for entertainment in entertainment_response.data:
-            try:
-                recommendation_data = {
-                    'id': str(uuid.uuid4()),
-                    'user_id': request.user_id,
-                    'entertainment_id': entertainment['id'],
-                    'recommended_at': datetime.now().isoformat(),
-                    'matched_state': user_dominant_state
+            if not response.data:
+                raise HTTPException(
+                    status_code=404,
+                    detail="No mental state report found for this user"
+                )
+
+            report = response.data[0]
+            user_dominant_state = report['dominant_state']
+            
+            # Fetch entertainments with matching dominant state
+            entertainment_response = (
+                supabase.table('entertainments')
+                .select('id, title, type, dominant_state, cover_img_url, description, media_file_url')
+                .eq('dominant_state', user_dominant_state)
+                .execute()
+            )
+            
+            if not entertainment_response.data:
+                return {
+                    "success": True,
+                    "recommendations": [],
+                    "message": f"No entertainments found matching the '{user_dominant_state}' state."
                 }
                 
-                # Store the recommendation
-                supabase.table('recommended_entertainments').insert(recommendation_data).execute()
-                
-                # Add to return list with additional details
-                recommendations.append({
-                    **entertainment,
-                    'recommended_at': recommendation_data['recommended_at'],
-                    'matched_state': user_dominant_state
-                })
-                
-            except Exception as insert_error:
-                logger.error(f"Failed to store recommendation: {insert_error}")
-                continue
-        
-        return {
-            "success": True,
-            "recommendations": recommendations,
-            "dominant_state": user_dominant_state
-        }
+            # Store recommendations and prepare response
+            recommendations = []
+            for entertainment in entertainment_response.data:
+                try:
+                    recommendation_data = {
+                        'id': str(uuid.uuid4()),
+                        'user_id': user_id,
+                        'entertainment_id': entertainment['id'],
+                        'recommended_at': datetime.now().isoformat(),
+                        'matched_state': user_dominant_state
+                    }
+                    
+                    # Store the recommendation
+                    supabase.table('recommended_entertainments').insert(recommendation_data).execute()
+                    
+                    # Add to return list with additional details
+                    recommendations.append({
+                        **entertainment,
+                        'recommended_at': recommendation_data['recommended_at'],
+                        'matched_state': user_dominant_state
+                    })
+                    
+                except Exception as insert_error:
+                    logger.error(f"Failed to store recommendation: {insert_error}")
+                    continue
+            
+            return {
+                "success": True,
+                "recommendations": recommendations,
+                "dominant_state": user_dominant_state
+            }
+        else:
+            # Return the recommendations from get_all_recommendations
+            return {
+                "success": True,
+                "recommendations": recommendations["entertainments"]
+            }
         
     except HTTPException as he:
         raise he

@@ -10,6 +10,11 @@ from typing import Dict, List, Optional
 # Initialize Groq client
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
 
+# Initialize Supabase client
+supabase_url = os.environ.get("SUPABASE_URL", "https://cpuhivcyhvqayzgdvdaw.supabase.co")
+supabase_key = os.environ.get("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwdWhpdmN5aHZxYXl6Z2R2ZGF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzNDc4NDgsImV4cCI6MjA2ODkyMzg0OH0.dO22JLQjE7UeQHvQn6mojILNuWi_02MiZ9quz5v8pNk")
+supabase = create_client(supabase_url, supabase_key)
+
 # Mental state predictor
 class GroqMentalStatePredictor:
     def __init__(self):
@@ -124,11 +129,6 @@ def analyze_user_mental_state(user_id: str) -> Optional[Dict]:
         print(f"❌ Error saving report: {e}")
 
     return report
-
-# Initialize Supabase client
-supabase_url = os.environ.get("SUPABASE_URL", "https://cpuhivcyhvqayzgdvdaw.supabase.co")
-supabase_key = os.environ.get("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwdWhpdmN5aHZxYXl6Z2R2ZGF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzNDc4NDgsImV4cCI6MjA2ODkyMzg0OH0.dO22JLQjE7UeQHvQn6mojILNuWi_02MiZ9quz5v8pNk")
-supabase = create_client(supabase_url, supabase_key)
 
 # Common utility functions
 def get_user_dominant_state(user_id):
@@ -273,7 +273,7 @@ def get_entertainments_by_dominant_state(dominant_state):
     """Fetch entertainments that match the dominant state"""
     try:
         response = supabase.table('entertainments') \
-            .select('id, title, type, dominant_state') \
+            .select('id, title, type, dominant_state, cover_img_url, description, media_file_url') \
             .eq('dominant_state', dominant_state) \
             .execute()
         return response.data if response.data else []
@@ -355,7 +355,46 @@ def display_stored_recommendations(user_id):
     except Exception as e:
         print(f"Error fetching stored recommendations: {e}")
 
-# Main recommendation system
+# Main recommendation system - UPDATED FUNCTION
+def get_all_recommendations(user_id: str) -> Dict:
+    """
+    Get all recommendations for a user based on their mental state.
+    Returns a dictionary with doctors and entertainment recommendations.
+    Also stores the recommendations in the database.
+    """
+    # Get user's dominant state
+    dominant_state = get_user_dominant_state(user_id)
+    
+    if not dominant_state:
+        # If no dominant state, return empty recommendations
+        return {
+            "doctors": [],
+            "entertainments": []
+        }
+    
+    # Get doctor recommendations
+    doctors = get_doctors_by_dominant_state(dominant_state)
+    
+    # Get entertainment recommendations
+    entertainments = get_entertainments_by_dominant_state(dominant_state)
+    
+    # STORE THE RECOMMENDATIONS IN DATABASE
+    if entertainments:
+        store_recommended_entertainments(user_id, entertainments, dominant_state)
+    
+    # For doctors, we need to assign one (not just get the list)
+    assigned_doctor = None
+    if doctors:
+        assigned_doctor_obj = assign_best_available_doctor(user_id, doctors)
+        if assigned_doctor_obj:
+            assigned_doctor = [assigned_doctor_obj]  # Return as list for consistency
+    
+    return {
+        "doctors": assigned_doctor if assigned_doctor else [],
+        "entertainments": entertainments
+    }
+
+# CLI functions (for testing)
 def recommend_doctors(user_id, dominant_state):
     """Doctor recommendation logic"""
     print(f"\n=== DOCTOR RECOMMENDATION ===")
@@ -447,32 +486,6 @@ def main(user_id: Optional[str] = None) -> Optional[Dict]:
     return {
         "mental_state": report,
         "dominant_state": dominant_state
-    }
-
-def get_all_recommendations(user_id: str) -> Dict:
-    """
-    Get all recommendations for a user based on their mental state.
-    Returns a dictionary with doctors and entertainment recommendations.
-    """
-    # Get user's dominant state
-    dominant_state = get_user_dominant_state(user_id)
-    
-    if not dominant_state:
-        # If no dominant state, return empty recommendations
-        return {
-            "doctors": [],
-            "entertainments": []
-        }
-    
-    # Get doctor recommendations
-    doctors = get_doctors_by_dominant_state(dominant_state)
-    
-    # Get entertainment recommendations
-    entertainments = get_entertainments_by_dominant_state(dominant_state)
-    
-    return {
-        "doctors": doctors,
-        "entertainments": entertainments
     }
 
 # Run the program in CLI mode if called directly

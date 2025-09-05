@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:safespace/screens/media_player_screen.dart';
 
@@ -88,6 +89,33 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
         return;
       }
 
+      // ✅ FIRST: Call the backend API to generate recommendations
+      try {
+        // Replace with your actual backend URL
+        const baseUrl = 'http://127.0.0.1:8000'; // Base URL of the API server
+        final apiUrl = '$baseUrl/recommend_entertainment/api/suggestions/${user.id}';
+        
+        final response = await http.get(
+          Uri.parse(apiUrl),
+          headers: {'Content-Type': 'application/json'},
+        );
+        
+        if (response.statusCode == 200) {
+          print('✅ Recommendations generated successfully');
+        } else {
+          print('⚠️ API call failed: ${response.statusCode}');
+          // Continue anyway - recommendations might already exist
+        }
+        
+        // Wait a bit for the backend to process and store recommendations
+        await Future.delayed(const Duration(seconds: 1));
+        
+      } catch (apiError) {
+        print('⚠️ API call error (may be OK): $apiError');
+        // Continue anyway - recommendations might already exist
+      }
+
+      // ✅ THEN: Fetch the stored recommendations from database
       final response = await Supabase.instance.client
           .from('recommended_entertainments')
           .select('entertainments(*), matched_state, recommended_at')
@@ -113,7 +141,7 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
       } else {
         setState(() {
           entertainmentItems = [];
-          errorMessage = 'No recommendations available.';
+          errorMessage = 'No recommendations available. Complete a mental health assessment first.';
           isLoading = false;
         });
       }
@@ -146,14 +174,15 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
-            Tab(text: "All"),
-            Tab(text: "Recommended"),
+            Tab(text: "All Content"),
+            Tab(text: "For You"),
           ],
         ),
       ),
       body: Column(
         children: [
-          if (!isLoading && errorMessage.isEmpty) _buildCategoryFilter(),
+          if (!isLoading && errorMessage.isEmpty && _tabController.index == 0) 
+            _buildCategoryFilter(),
           Expanded(
             child: isLoading
                 ? _buildLoadingState()
@@ -197,23 +226,59 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
 
   Widget _buildErrorState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(errorMessage),
-          ElevatedButton(
-            onPressed: _loadData,
-            child: const Text('Try Again'),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 50,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              errorMessage,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _loadData,
+              child: const Text('Try Again'),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildContentList() {
     if (filteredItems.isEmpty) {
-      return const Center(
-        child: Text('No content found'),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.search_off,
+              size: 50,
+              color: Colors.grey[300],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _tabController.index == 0 
+                ? 'No content found for $selectedCategory'
+                : 'No personalized recommendations yet',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
       );
     }
 
@@ -221,29 +286,26 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
       itemCount: filteredItems.length,
       itemBuilder: (context, index) {
         final item = filteredItems[index];
-        return _buildMusicItem(item);
+        return _buildEntertainmentItem(item);
       },
     );
   }
 
-  Widget _buildMusicItem(Map<String, dynamic> item) {
+  Widget _buildEntertainmentItem(Map<String, dynamic> item) {
     final title = item['title'] ?? 'Unknown Title';
     final type = item['type'] ?? 'Unknown Type';
     final coverImgUrl = item['cover_img_url'];
     final mediaUrl = item['media_file_url'];
     final matchedState = item['matched_state'];
+    final recommendedAt = item['recommended_at'];
 
     return Card(
       margin: const EdgeInsets.all(8.0),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Row(
-          children: [
-            // Cover image
-            if (coverImgUrl != null)
-              Container(
-                width: 60,
-                height: 60,
+      child: ListTile(
+        leading: coverImgUrl != null
+            ? Container(
+                width: 50,
+                height: 50,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8.0),
                   image: DecorationImage(
@@ -252,67 +314,96 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
                   ),
                 ),
               )
-            else
-              Container(
-                width: 60,
-                height: 60,
+            : Container(
+                width: 50,
+                height: 50,
                 decoration: BoxDecoration(
                   color: Colors.grey[300],
                   borderRadius: BorderRadius.circular(8.0),
                 ),
-                child: const Icon(Icons.music_note),
+                child: Icon(
+                  _getMediaIcon(type),
+                  color: Colors.grey[600],
+                ),
               ),
-
-            const SizedBox(width: 16.0),
-
-            // Title, type, and matched state
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16.0,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4.0),
-                  Text(
-                    type,
-                    style: TextStyle(
-                      fontSize: 14.0,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  if (matchedState != null) ...[
-                    const SizedBox(height: 4.0),
-                    Text(
-                      "Matched: $matchedState",
-                      style: const TextStyle(
-                        fontSize: 12.0,
-                        color: Colors.blueGrey,
-                      ),
-                    ),
-                  ],
-                ],
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16.0,
+            fontWeight: FontWeight.w500,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              type,
+              style: TextStyle(
+                fontSize: 14.0,
+                color: Colors.grey[600],
               ),
             ),
-
-            const SizedBox(width: 16.0),
-
-            // Play button
-            IconButton(
-              icon: const Icon(Icons.play_arrow, size: 30.0),
-              onPressed: () {
-                _navigateToPlayer(item);
-              },
-            ),
+            if (matchedState != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                "Matches your: $matchedState",
+                style: const TextStyle(
+                  fontSize: 12.0,
+                  color: Colors.green,
+                ),
+              ),
+            ],
+            if (recommendedAt != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                "Recommended: ${_formatDate(recommendedAt)}",
+                style: const TextStyle(
+                  fontSize: 11.0,
+                  color: Colors.blueGrey,
+                ),
+              ),
+            ],
           ],
         ),
+        trailing: IconButton(
+          icon: Icon(
+            Icons.play_circle_fill,
+            color: Theme.of(context).primaryColor,
+            size: 30.0,
+          ),
+          onPressed: () {
+            _navigateToPlayer(item);
+          },
+        ),
+        onTap: () {
+          _navigateToPlayer(item);
+        },
       ),
     );
+  }
+
+  IconData _getMediaIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'meditation':
+        return Icons.self_improvement;
+      case 'music track':
+        return Icons.music_note;
+      case 'video':
+        return Icons.videocam;
+      default:
+        return Icons.play_arrow;
+    }
+  }
+
+  String _formatDate(String dateString) {
+    try {
+      final date = DateTime.parse(dateString);
+      return '${date.day}/${date.month}/${date.year}';
+    } catch (e) {
+      return dateString;
+    }
   }
 
   void _navigateToPlayer(Map<String, dynamic> item) {
@@ -337,8 +428,15 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Media file not available'),
+          duration: Duration(seconds: 2),
         ),
       );
     }
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 }

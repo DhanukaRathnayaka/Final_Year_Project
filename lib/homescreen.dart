@@ -1,11 +1,11 @@
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:line_icons/line_icons.dart';
 import 'package:safespace/screens/chatbot.dart';
 import 'package:safespace/screens/notification.dart';
 import 'package:safespace/authentication/auth_service.dart';
 import 'package:safespace/services/suggestion_service.dart';
-import 'package:flutter/services.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool isGuest;
