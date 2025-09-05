@@ -9,20 +9,37 @@ class EntertainmentScreen extends StatefulWidget {
   State<EntertainmentScreen> createState() => _EntertainmentScreenState();
 }
 
-class _EntertainmentScreenState extends State<EntertainmentScreen> {
+class _EntertainmentScreenState extends State<EntertainmentScreen>
+    with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> entertainmentItems = [];
   bool isLoading = true;
   String errorMessage = '';
   String selectedCategory = 'All';
   final List<String> categories = ['All', 'Meditation', 'Music Track', 'Video'];
 
+  late TabController _tabController;
+
   @override
   void initState() {
     super.initState();
-    fetchEntertainmentContent();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) return;
+      _loadData();
+    });
+    _loadData();
   }
 
-  Future<void> fetchEntertainmentContent() async {
+  Future<void> _loadData() async {
+    if (_tabController.index == 0) {
+      await fetchAllEntertainmentContent();
+    } else {
+      await fetchRecommendedEntertainmentContent();
+    }
+  }
+
+  /// Fetch all entertainments
+  Future<void> fetchAllEntertainmentContent() async {
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) {
@@ -33,7 +50,6 @@ class _EntertainmentScreenState extends State<EntertainmentScreen> {
         return;
       }
 
-      // Fetch entertainment items directly from Supabase
       final response = await Supabase.instance.client
           .from('entertainments')
           .select()
@@ -60,6 +76,55 @@ class _EntertainmentScreenState extends State<EntertainmentScreen> {
     }
   }
 
+  /// Fetch recommended entertainments
+  Future<void> fetchRecommendedEntertainmentContent() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        setState(() {
+          errorMessage = 'Please log in to see recommendations.';
+          isLoading = false;
+        });
+        return;
+      }
+
+      final response = await Supabase.instance.client
+          .from('recommended_entertainments')
+          .select('entertainments(*), matched_state, recommended_at')
+          .eq('user_id', user.id)
+          .order('recommended_at', ascending: false);
+
+      if (response != null && response.isNotEmpty) {
+        final List<Map<String, dynamic>> items =
+            response.map<Map<String, dynamic>>((item) {
+          final entertainment = item['entertainments'] as Map<String, dynamic>;
+          return {
+            ...entertainment,
+            'matched_state': item['matched_state'],
+            'recommended_at': item['recommended_at'],
+          };
+        }).toList();
+
+        setState(() {
+          entertainmentItems = items;
+          isLoading = false;
+          errorMessage = '';
+        });
+      } else {
+        setState(() {
+          entertainmentItems = [];
+          errorMessage = 'No recommendations available.';
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        errorMessage = "Error loading recommendations: $e";
+        isLoading = false;
+      });
+    }
+  }
+
   List<Map<String, dynamic>> get filteredItems {
     if (selectedCategory == 'All') return entertainmentItems;
     return entertainmentItems
@@ -75,9 +140,16 @@ class _EntertainmentScreenState extends State<EntertainmentScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: fetchEntertainmentContent,
+            onPressed: _loadData,
           ),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: "All"),
+            Tab(text: "Recommended"),
+          ],
+        ),
       ),
       body: Column(
         children: [
@@ -130,7 +202,7 @@ class _EntertainmentScreenState extends State<EntertainmentScreen> {
         children: [
           Text(errorMessage),
           ElevatedButton(
-            onPressed: fetchEntertainmentContent,
+            onPressed: _loadData,
             child: const Text('Try Again'),
           ),
         ],
@@ -159,6 +231,7 @@ class _EntertainmentScreenState extends State<EntertainmentScreen> {
     final type = item['type'] ?? 'Unknown Type';
     final coverImgUrl = item['cover_img_url'];
     final mediaUrl = item['media_file_url'];
+    final matchedState = item['matched_state'];
 
     return Card(
       margin: const EdgeInsets.all(8.0),
@@ -189,10 +262,10 @@ class _EntertainmentScreenState extends State<EntertainmentScreen> {
                 ),
                 child: const Icon(Icons.music_note),
               ),
-            
+
             const SizedBox(width: 16.0),
-            
-            // Title and type
+
+            // Title, type, and matched state
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -213,12 +286,22 @@ class _EntertainmentScreenState extends State<EntertainmentScreen> {
                       color: Colors.grey[600],
                     ),
                   ),
+                  if (matchedState != null) ...[
+                    const SizedBox(height: 4.0),
+                    Text(
+                      "Matched: $matchedState",
+                      style: const TextStyle(
+                        fontSize: 12.0,
+                        color: Colors.blueGrey,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
-            
+
             const SizedBox(width: 16.0),
-            
+
             // Play button
             IconButton(
               icon: const Icon(Icons.play_arrow, size: 30.0),
@@ -232,31 +315,30 @@ class _EntertainmentScreenState extends State<EntertainmentScreen> {
     );
   }
 
-  // In the _navigateToPlayer method, update to pass the cover image:
-void _navigateToPlayer(Map<String, dynamic> item) {
-  final title = item['title'] ?? 'Unknown Title';
-  final type = item['type'] ?? 'Unknown Type';
-  final url = item['media_file_url'];
-  final coverImgUrl = item['cover_img_url'];
+  void _navigateToPlayer(Map<String, dynamic> item) {
+    final title = item['title'] ?? 'Unknown Title';
+    final type = item['type'] ?? 'Unknown Type';
+    final url = item['media_file_url'];
+    final coverImgUrl = item['cover_img_url'];
 
-  if (url != null) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => MediaPlayerScreen(
-          mediaUrl: url,
-          title: title,
-          mediaType: type,
-          coverImgUrl: coverImgUrl,
+    if (url != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MediaPlayerScreen(
+            mediaUrl: url,
+            title: title,
+            mediaType: type,
+            coverImgUrl: coverImgUrl,
+          ),
         ),
-      ),
-    );
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Media file not available'),
-      ),
-    );
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Media file not available'),
+        ),
+      );
+    }
   }
-}
 }
