@@ -8,7 +8,7 @@ import 'package:safespace/authentication/auth_gate.dart';
 import 'package:safespace/authentication/login_page.dart';
 import 'package:safespace/services/mental_state_service.dart';
 
-// Add this to your main.dart or create a service locator
+// Add this to your main.dart or create a service locators
 MentalStateService mentalStateService = MentalStateService();
 
 void main() async {
@@ -28,7 +28,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SafeSpace',
+      title: 'SafeSpac',
       theme: ThemeData(primarySwatch: Colors.blue),
       home: const AuthGate(),
       debugShowCheckedModeBanner: false,
