@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 class Config {
   // Network IP for local network access
-  static const String networkIp = '192.168.1.6';
+  static const String networkIp = 'localhost';
   static const String port = '8000';
   
   static String get apiBaseUrl {
