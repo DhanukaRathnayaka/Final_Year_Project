@@ -1,5 +1,3 @@
-import os
-from dotenv import load_dotenv
 from database.supabase_client import db
 from collections import defaultdict
 import groq
@@ -8,13 +6,8 @@ from typing import Dict, List, Optional
 from datetime import datetime
 import uuid
 
-# Load environment variables
-load_dotenv()
-
-# 🔑 Load Groq API key from environment
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-if not GROQ_API_KEY:
-    raise ValueError("GROQ_API_KEY environment variable is not set")
+# 🔑 Add your Groq API key here
+GROQ_API_KEY = "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"
 
 
 class GroqMentalStatePredictor:
