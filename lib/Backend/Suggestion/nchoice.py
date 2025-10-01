@@ -8,7 +8,7 @@ from supabase import create_client, Client
 from typing import Dict, List, Optional
 
 # Initialize Groq client
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
 
 # Initialize Supabase client
 supabase_url = os.environ.get("SUPABASE_URL", "https://cpuhivcyhvqayzgdvdaw.supabase.co")
@@ -18,7 +18,10 @@ supabase = create_client(supabase_url, supabase_key)
 # Mental state predictor
 class GroqMentalStatePredictor:
     def __init__(self):
-        self.client = groq.Client(api_key=GROQ_API_KEY)
+        api_key = os.environ.get("GROQ_API_KEY")
+        if not api_key:
+            raise ValueError("GROQ_API_KEY environment variable is not set")
+        self.client = groq.Client(api_key=api_key)
         self.mental_conditions = [
             "happy/positive",
             "stressed/anxious",
@@ -32,13 +35,29 @@ class GroqMentalStatePredictor:
     def predict(self, message: str) -> Dict[str, float]:
         """Predict mental state from a single message using Groq"""
         prompt = f"""
-        Analyze the following message and classify the writer's mental state.
+        Analyze the following message and classify the writer's mental state based on these specific emotional indicators:
+
+        happy/positive: expressions of joy, achievement, optimism, satisfaction
+        stressed/anxious: mentions of worry, pressure, racing thoughts, deadlines, overwhelm
+        depressed/sad: expressions of hopelessness, low energy, loss of interest, emptiness
+        angry/frustrated: expressions of anger, irritation, complaints, blame
+        neutral/calm: balanced mood, routine activities, no strong emotions
+        confused/uncertain: expressions of doubt, unclear thoughts, seeking guidance
+        excited/energetic: high energy, enthusiasm, eagerness, motivation, future-focused excitement
+
         Only respond with ONE of these exact conditions:
         {", ".join(self.mental_conditions)}
         
-        Message: "{message}"
+        Message to analyze: "{message}"
         
-        Also provide a confidence score between 0.7 and 1.0.
+        Consider:
+        1. Emotional keywords and phrases
+        2. Intensity of expression
+        3. Context of the message
+        4. Energy level expressed
+        5. Future vs present orientation
+        
+        Provide confidence score between 0.7 and 1.0 based on how clearly the message matches the emotional indicators.
         
         Return your response in this exact JSON format:
         {{
@@ -46,23 +65,118 @@ class GroqMentalStatePredictor:
             "confidence": 0.85
         }}
         """
+        def normalize_prediction(pred: str) -> Optional[str]:
+            if not pred or not isinstance(pred, str):
+                return None
+            p = pred.strip().lower()
+            # direct match
+            if p in self.mental_conditions:
+                return p
+            # map common variants / keywords to canonical labels
+            mapping = {
+                "happy": "happy/positive",
+                "positive": "happy/positive",
+                "joy": "happy/positive",
+                "stressed": "stressed/anxious",
+                "anxious": "stressed/anxious",
+                "anxiety": "stressed/anxious",
+                "depressed": "depressed/sad",
+                "sad": "depressed/sad",
+                "angry": "angry/frustrated",
+                "frustrated": "angry/frustrated",
+                "frustration": "angry/frustrated",
+                "neutral": "neutral/calm",
+                "calm": "neutral/calm",
+                "confused": "confused/uncertain",
+                "uncertain": "confused/uncertain",
+                "excited": "excited/energetic",
+                "energetic": "excited/energetic",
+                "excited/energetic": "excited/energetic",
+            }
+            # check full token or keyword presence
+            for k, v in mapping.items():
+                if k in p:
+                    return v
+            return None
+
+        def heuristic_predict(text: str) -> Dict[str, float]:
+            t = (text or "").lower()
+            checks = [
+                # Prioritize checking for positive emotions first
+                (['happy', 'joy', 'smil', 'amazing', 'best', 'excit', 'great', 'wonderful', 'passed', 'distinction', 'achievement', 'success', 'perfect'], 'happy/positive', 0.9),
+                (['excite', 'burst', "can't wait", 'eager', 'energ', 'enthusiastic', 'thrilled'], 'excited/energetic', 0.85),
+                (['stress', 'overwhelm', 'racing', 'deadline', 'anxious', 'worry', 'panic', 'nervous'], 'stressed/anxious', 0.85),
+                (['hopeless', 'depress', 'sad', 'low energy', 'cant find joy', 'empty', "don't see the point"], 'depressed/sad', 0.85),
+                (['angry', 'furious', 'fed up', 'ridiculous', 'incompetent', 'annoyed', 'frustrat'], 'angry/frustrated', 0.85),
+                (['not sure', 'unsure', 'confus', 'clarif', 'should i', 'what should'], 'confused/uncertain', 0.75),
+                (['regular day', 'lunch', 'mild', 'okay', 'ok', 'routine'], 'neutral/calm', 0.75)
+            ]
+            
+            max_confidence = 0
+            best_prediction = None
+            
+            for keywords, label, conf in checks:
+                for kw in keywords:
+                    if kw in t:
+                        if conf > max_confidence:
+                            max_confidence = conf
+                            best_prediction = label
+            
+            if best_prediction:
+                return {'prediction': best_prediction, 'confidence': max_confidence}
+                
+            # Only fall back to neutral if no other emotion is detected
+            return {'prediction': 'neutral/calm', 'confidence': 0.7}
+
         try:
+            # Print debugging information
+            try:
+                print(f"\n🔑 Using API key: {self.client.api_key[:8]}...")
+            except Exception:
+                print("\n🔑 Using API client (api_key unavailable)")
+
             response = self.client.chat.completions.create(
-                model="llama3-8b-8192",
+                model="llama-3.1-8b-instant",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
                 max_tokens=100,
                 response_format={"type": "json_object"}
             )
 
-            result = json.loads(response.choices[0].message.content)
-            return {
-                "prediction": result["prediction"],
-                "confidence": float(result["confidence"])
-            }
+            # Log raw API response for debugging
+            raw = getattr(response.choices[0].message, 'content', None) or str(response.choices[0])
+            print(f"\n📊 Raw Groq API Response:\n{raw}")
+
+            try:
+                result = json.loads(raw)
+                if not isinstance(result, dict) or "prediction" not in result or "confidence" not in result:
+                    raise ValueError("Invalid response format")
+
+                pred_raw = result.get("prediction")
+                pred_norm = normalize_prediction(pred_raw)
+                if not pred_norm:
+                    # try normalizing by cleaning pred_raw
+                    if isinstance(pred_raw, str):
+                        pred_norm = normalize_prediction(pred_raw.replace('"', '').replace("'", ''))
+
+                if not pred_norm:
+                    raise ValueError(f"Invalid prediction: {pred_raw}")
+
+                conf = float(result.get("confidence", 0.7))
+                conf = max(0.7, min(conf, 1.0))
+                return {"prediction": pred_norm, "confidence": conf}
+            except (json.JSONDecodeError, ValueError) as e:
+                print(f"Error parsing Groq response: {e}")
+                # fallback to local heuristic
+                fallback = heuristic_predict(message)
+                print(f"Fallback heuristic prediction: {fallback}")
+                return fallback
         except Exception as e:
             print(f"Prediction error: {e}")
-            return {"prediction": "neutral/calm", "confidence": 0.7}
+            # API failed - use heuristic to avoid always returning confused/uncertain
+            fallback = heuristic_predict(message)
+            print(f"API failure fallback prediction: {fallback}")
+            return fallback
 
 def analyze_user_mental_state(user_id: str) -> Optional[Dict]:
     """Analyze user's mental state using Groq API"""
@@ -90,16 +204,18 @@ def analyze_user_mental_state(user_id: str) -> Optional[Dict]:
     recent_messages = messages[-20:]  # last 20 messages for analysis
 
     # Analyze individual messages
-    for msg in recent_messages:
+    for i, msg in enumerate(recent_messages, 1):
         result = predictor.predict(msg['message'])
         state_counts[result['prediction']] += 1
         confidence_sum += result['confidence']
+        # Log per-message predictions
+        print(f"Message {i}: {result['prediction']} (confidence: {result['confidence']:.2f})")
 
     total_messages = len(recent_messages)
     dominant_state = max(state_counts, key=state_counts.get)
     avg_confidence = confidence_sum / total_messages
 
-    if state_counts[dominant_state] / total_messages < 0.4:
+    if state_counts[dominant_state] / total_messages < 0.25:
         dominant_state = "mixed/no_clear_pattern"
 
     report = {

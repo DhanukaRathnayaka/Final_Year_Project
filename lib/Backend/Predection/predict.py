@@ -7,7 +7,7 @@ from datetime import datetime
 import uuid
 
 # 🔑 Add your Groq API key here
-GROQ_API_KEY = "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"
+GROQ_API_KEY = "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"
 
 
 class GroqMentalStatePredictor:
