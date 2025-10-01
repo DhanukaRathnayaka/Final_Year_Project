@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 import uuid
 import groq
 import json
@@ -6,6 +7,9 @@ from collections import defaultdict
 from datetime import datetime
 from supabase import create_client, Client
 from typing import Dict, List, Optional
+
+# Load environment variables
+load_dotenv()
 
 # Initialize Groq client
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
