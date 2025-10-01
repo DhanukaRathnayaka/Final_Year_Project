@@ -46,7 +46,8 @@ try:
     logger.info("Successfully connected to Groq API")
 except Exception as e:
     logger.error(f"Error connecting to Groq API: {str(e)}")
-    raise
+    logger.warning("Continuing without Groq API connection. Chat functionality may not work.")
+    groq_client = None
 
 # Crisis keywords and response
 CRISIS_KEYWORDS = [
@@ -145,6 +146,8 @@ def clean_response(text: str, crisis_mode: bool = False) -> str:
 
 def query_groq(model: str, prompt: str, max_tokens: int = 512) -> str:
     """Query the Groq API for a response."""
+    if groq_client is None:
+        raise HTTPException(status_code=503, detail="Groq API is not available. Please check the API key.")
     try:
         response = groq_client.chat.completions.create(
             model=model,

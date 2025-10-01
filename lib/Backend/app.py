@@ -6,11 +6,18 @@ from Mental_Health_Chatbot import suggestion_generator
 from pydantic import BaseModel
 import logging
 import os
+import sys
 from supabase import create_client, Client
 from dotenv import load_dotenv
 from typing import Optional, List
 from datetime import datetime, timedelta
 import uuid
+
+# Fix encoding issues on Windows
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8')
 
 # Load environment variables
 load_dotenv()

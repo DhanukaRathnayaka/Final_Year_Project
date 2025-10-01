@@ -1,3 +1,4 @@
+import '../config.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -56,7 +57,7 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
           .select()
           .order('title');
 
-      if (response != null && response.isNotEmpty) {
+      if (response.isNotEmpty) {
         setState(() {
           entertainmentItems = List<Map<String, dynamic>>.from(response);
           isLoading = false;
@@ -91,8 +92,8 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
 
       // ✅ FIRST: Call the backend API to generate recommendations
       try {
-        // Replace with your actual backend URL
-        const baseUrl = 'http://127.0.0.1:8000'; // Base URL of the API server
+        // Use dynamic backend URL from config
+        final baseUrl = Config.apiBaseUrl;
         final apiUrl = '$baseUrl/recommend_entertainment/api/suggestions/${user.id}';
         
         final response = await http.get(
@@ -122,7 +123,7 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
           .eq('user_id', user.id)
           .order('recommended_at', ascending: false);
 
-      if (response != null && response.isNotEmpty) {
+      if (response.isNotEmpty) {
         final List<Map<String, dynamic>> items =
             response.map<Map<String, dynamic>>((item) {
           final entertainment = item['entertainments'] as Map<String, dynamic>;
@@ -295,7 +296,6 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
     final title = item['title'] ?? 'Unknown Title';
     final type = item['type'] ?? 'Unknown Type';
     final coverImgUrl = item['cover_img_url'];
-    final mediaUrl = item['media_file_url'];
     final matchedState = item['matched_state'];
     final recommendedAt = item['recommended_at'];
 

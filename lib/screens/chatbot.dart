@@ -4,11 +4,8 @@ import 'package:line_icons/line_icons.dart';
 import 'package:safespace/services/chat_service.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:safespace/services/suggestion_service.dart';
 import 'package:safespace/services/mental_state_service.dart';
-import 'package:safespace/screens/ai_suggestions_screen.dart';
-
-
+import 'package:safespace/screens/suggestion_generator_widget.dart';
 
 class ChatBotScreen extends StatefulWidget {
   @override
@@ -63,7 +60,7 @@ class _ChatBotScreenState extends State<ChatBotScreen>
     _controller.dispose();
     _scrollController.dispose();
     _typingAnimationController.dispose();
-    _endCurrentConversation();
+    // Don't end conversation on dispose, let back button handle it
     super.dispose();
   }
 
@@ -102,10 +99,9 @@ class _ChatBotScreenState extends State<ChatBotScreen>
     }
   }
 
-  Future<void> _endCurrentConversation() async {
+  Future<bool> _endCurrentConversation() async {
     if (currentConversationId == null) {
-      _showErrorSnackBar('No active conversation to end');
-      return;
+      return true; // Allow back navigation if no conversation
     }
 
     try {
@@ -119,17 +115,83 @@ class _ChatBotScreenState extends State<ChatBotScreen>
           .update({'ended_at': DateTime.now().toIso8601String()})
           .eq('id', currentConversationId!);
 
-      // Generate AI suggestions based on the conversation
-      await _generateAndShowSuggestions();
+      // Generate AI suggestions based on the conversation if there are messages
+      if (messages.isNotEmpty) {
+        await _generateAndShowSuggestions();
+      }
+
+      return true; // Allow back navigation
     } catch (e) {
       _showErrorSnackBar('Failed to end conversation: ${e.toString()}');
       print('Error ending conversation: $e');
+      return false; // Prevent back navigation on error
     } finally {
       if (mounted) {
         setState(() {
           isLoading = false;
         });
       }
+    }
+  }
+
+  // Updated method to use the new widget
+  Future<void> _generateAndShowSuggestions() async {
+    if (userId == null || currentConversationId == null || messages.isEmpty) {
+      return;
+    }
+
+    final conversationMessages = messages
+        .map((msg) => msg['message'] as String)
+        .toList();
+
+    // Use the SuggestionGeneratorWidget
+    final suggestionGenerator = SuggestionGeneratorWidget(
+      conversationMessages: conversationMessages,
+      userId: userId!,
+      conversationId: currentConversationId!,
+    );
+
+    await suggestionGenerator.generateAndShowSuggestions(context);
+  }
+
+  // Add this method to handle back button press
+  Future<bool> _onWillPop() async {
+    if (isLoading) {
+      // Prevent back navigation while loading
+      return false;
+    }
+
+    // Show confirmation dialog if there are messages
+    if (messages.isNotEmpty) {
+      final shouldEnd = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('End Conversation?'),
+          content: const Text(
+            'Would you like to end this conversation and get personalized suggestions?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('End Conversation'),
+              style: TextButton.styleFrom(foregroundColor: Colors.blue),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldEnd == true) {
+        return await _endCurrentConversation();
+      } else {
+        return false; // Stay on current screen
+      }
+    } else {
+      // No messages, just end conversation without suggestions
+      return await _endCurrentConversation();
     }
   }
 
@@ -150,84 +212,6 @@ class _ChatBotScreenState extends State<ChatBotScreen>
       }).catchError((e) {
         print('Error in mental state analysis: $e');
       });
-    }
-  }
-
-  Future<void> _generateAndShowSuggestions() async {
-    if (messages.isEmpty) {
-      _showErrorSnackBar(
-        'No messages in conversation to generate suggestions from',
-      );
-      return;
-    }
-
-    try {
-      // Show loading indicator
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              ),
-              const SizedBox(width: 16),
-              const Text('Generating suggestions...'),
-            ],
-          ),
-          duration: const Duration(seconds: 10),
-          backgroundColor: Colors.blue,
-        ),
-      );
-
-      final suggestionService = SuggestionService();
-      final conversationMessages = messages
-          .map((msg) => msg['message'] as String)
-          .toList();
-
-      final suggestions = await suggestionService.fetchAISuggestions(
-        conversation: conversationMessages,
-        userId: userId!,
-        conversationId: currentConversationId!,
-      );
-
-      if (!mounted) return;
-
-      // Clear any existing snackbars
-      ScaffoldMessenger.of(context).clearSnackBars();
-
-      if (suggestions.suggestions.isEmpty) {
-        throw Exception('No suggestions were generated');
-      }
-
-      // Navigate to suggestions screen
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              AISuggestionsScreen(suggestions: suggestions.suggestions),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-
-      String errorMessage = e.toString();
-      if (errorMessage.contains('OpenAI API error')) {
-        errorMessage =
-            'Unable to generate suggestions at this time. Please try again later.';
-      }
-      _showErrorSnackBar(errorMessage);
-      print('Error generating suggestions: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to generate suggestions: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 
@@ -420,96 +404,70 @@ class _ChatBotScreenState extends State<ChatBotScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 1,
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.blue[100],
-                borderRadius: BorderRadius.circular(12),
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        backgroundColor: Colors.grey[50],
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 1,
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue[100],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(LineIcons.robot, color: Colors.blue[700], size: 24),
               ),
-              child: Icon(LineIcons.robot, color: Colors.blue[700], size: 24),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'AI Companion',
-                    style: TextStyle(
-                      color: Colors.blue[900],
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'AI Companion',
+                      style: TextStyle(
+                        color: Colors.blue[900],
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
                     ),
-                  ),
-                  Text(
-                    'Always here to listen',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton.icon(
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('End Conversation?'),
-                  content: const Text(
-                    'Would you like to end this conversation and get personalized suggestions?',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _endCurrentConversation();
-                      },
-                      child: const Text('End Conversation'),
-                      style: TextButton.styleFrom(foregroundColor: Colors.blue),
+                    Text(
+                      'Always here to listen',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
                   ],
                 ),
-              );
-            },
-            icon: Icon(LineIcons.doorOpen, color: Colors.blue[700]),
-            label: Text('End Chat', style: TextStyle(color: Colors.blue[700])),
+              ),
+            ],
           ),
-          IconButton(
-            icon: Icon(Icons.refresh, color: Colors.blue[600]),
-            onPressed: isLoading ? null : _startNewConversation,
-            tooltip: 'New conversation',
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Messages area
-          Expanded(
-            child: isLoading && messages.isEmpty
-                ? _buildLoadingState()
-                : _buildMessagesList(),
-          ),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.refresh, color: Colors.blue[600]),
+              onPressed: isLoading ? null : _startNewConversation,
+              tooltip: 'New conversation',
+            ),
+          ],
+        ),
+        body: Column(
+          children: [
+            // Messages area
+            Expanded(
+              child: isLoading && messages.isEmpty
+                  ? _buildLoadingState()
+                  : _buildMessagesList(),
+            ),
 
-          // Typing indicator
-          if (isTyping) _buildTypingIndicator(),
+            // Typing indicator
+            if (isTyping) _buildTypingIndicator(),
 
-          // Input area
-          _buildInputArea(),
-        ],
+            // Input area
+            _buildInputArea(),
+          ],
+        ),
       ),
     );
   }

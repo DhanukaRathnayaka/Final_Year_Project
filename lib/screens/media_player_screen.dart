@@ -1,4 +1,3 @@
-import 'package:rxdart/rxdart.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 
@@ -22,7 +21,6 @@ class MediaPlayerScreen extends StatefulWidget {
 
 class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   AudioPlayer _audioPlayer = AudioPlayer();
-  bool _isPlaying = false;
   bool _isLoading = true;
   String _errorMessage = '';
 
@@ -30,7 +28,6 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   Stream<Duration> get _positionStream => _audioPlayer.positionStream;
   Stream<Duration?> get _durationStream => _audioPlayer.durationStream;
   Stream<bool> get _playingStream => _audioPlayer.playingStream;
-  Stream<PlayerState> get _playerStateStream => _audioPlayer.playerStateStream;
 
   @override
   void initState() {

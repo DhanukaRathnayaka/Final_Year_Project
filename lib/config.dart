@@ -28,8 +28,8 @@ class Config {
     // Use defaultTargetPlatform instead of Platform for better cross-platform support
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        // Android emulator/device - use network IP for real device, 10.0.2.2 for emulator
-        return 'http://$networkIp:$port';
+        // Android emulator needs 10.0.2.2 to reach host machine
+        return 'http://10.0.2.2:$port';
       case TargetPlatform.iOS:
         // iOS simulator/device - use network IP
         return 'http://$networkIp:$port';

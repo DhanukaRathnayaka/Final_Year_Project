@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -78,7 +79,7 @@ class _DoctorScreenState extends State<DoctorScreen>
 
       // Call your backend API
       final response = await http.post(
-        Uri.parse("http://localhost:8000/recommend"),
+        Uri.parse("${Config.apiBaseUrl}/recommend"),
         headers: {
           "Content-Type": "application/json",
           "Authorization": "Bearer ${user.id}",
