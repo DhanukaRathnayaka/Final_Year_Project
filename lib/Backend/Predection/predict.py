@@ -12,7 +12,9 @@ import uuid
 load_dotenv()
 
 # 🔑 Load Groq API key from environment
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+if not GROQ_API_KEY:
+    raise ValueError("GROQ_API_KEY environment variable is not set")
 
 
 class GroqMentalStatePredictor:

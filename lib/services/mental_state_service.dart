@@ -3,9 +3,10 @@ import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class MentalStateService {
-  // TODO: Move API key to environment variables or secure configuration
-  // This should be loaded from a secure source, not hardcoded
-  static const String _groqApiKey = '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';
+  // Load API key from environment
+  static final String _groqApiKey = const String.fromEnvironment(
+    'GROQ_API_KEY',
+  );
   final SupabaseClient _supabase = Supabase.instance.client;
 
   static const List<String> mentalConditions = [
