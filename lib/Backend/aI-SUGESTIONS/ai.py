@@ -1,6 +1,22 @@
 import random
 from supabase import create_client, Client
 from datetime import datetime
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from typing import List, Optional
+
+# Create FastAPI router
+router = APIRouter(prefix="/ai-suggestions", tags=["AI Suggestions"])
+
+# Pydantic models for request/response validation
+class SuggestionResponse(BaseModel):
+    success: bool
+    user_id: str
+    dominant_state: Optional[str]
+    suggestions_count: Optional[int]
+    storage_success: Optional[bool]
+    suggestions: Optional[List[dict]]
+    message: Optional[str]
 
 class SuggestionManager:
     def __init__(self):
@@ -208,5 +224,20 @@ def main():
             print(f"❌ {result['message']}")
         print("=" * 60)
 
+# Initialize the SuggestionManager instance
+suggestion_manager = SuggestionManager()
+
+@router.get("/suggestions/{user_id}", response_model=SuggestionResponse)
+async def get_suggestions(user_id: str):
+    """
+    Get AI suggestions for a specific user based on their mental state.
+    """
+    try:
+        result = suggestion_manager.get_suggestions_for_user(user_id)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Keep the main function for testing purposes
 if __name__ == "__main__":
     main()

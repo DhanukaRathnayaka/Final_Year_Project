@@ -3,10 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from Mental_Health_Chatbot.MentalHealthChatbot import router as chatbot_router
 # Import the suggestions router and include it so /generate_suggestions is available
 from Mental_Health_Chatbot import suggestion_generator
+import sys
+import os
+# Add the backend directory to the Python path so we can import ai.py
+sys.path.append(os.path.join(os.path.dirname(__file__), "aI-SUGESTIONS"))
+from ai import router as ai_suggestions_router
 from pydantic import BaseModel
 import logging
-import os
-import sys
 from supabase import create_client, Client
 from dotenv import load_dotenv
 from typing import Optional, List
@@ -51,6 +54,8 @@ app.add_middleware(
 app.include_router(chatbot_router, prefix="/api", tags=["chatbot"])
 # Include the suggestion generator router at root so endpoint is /generate_suggestions
 app.include_router(suggestion_generator.router)
+# Include the AI suggestions router
+app.include_router(ai_suggestions_router)
 
 @app.get("/")
 async def root():

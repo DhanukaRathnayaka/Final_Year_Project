@@ -24,10 +24,9 @@ api_key = os.getenv("GROQ_API_KEY")
 if not api_key:
     raise ValueError("GROQ_API_KEY not found in environment variables")
 
-# Create an OpenAI client pointing to Groq API
-client = OpenAI(
-    api_key=api_key,
-    base_url="https://api.groq.com/openai/v1")
+# Create a Groq client for API calls
+from groq import Groq
+client = Groq(api_key=api_key)
 
 class ConversationRequest(BaseModel):
     messages: List[str]
@@ -58,12 +57,9 @@ async def generate_suggestions(request: ConversationRequest) -> SuggestionRespon
             )
         
         try:
-            # Call OpenAI API to generate suggestions using the v1+ client API
-            # (openai>=1.0.0). We use client.chat.completions.create which matches
-            # the new interface.
-            # Try the new client API first
+            # Call Groq API to generate suggestions
             response = client.chat.completions.create(
-                model="gemma2-9b-it",  # Using the same model as the chatbot
+                model="gemma2-9b-it",  # Using Gemma 2 model
                 messages=[
                     {
                         "role": "system",
