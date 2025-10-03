@@ -5,6 +5,12 @@ import json
 from typing import Dict, List, Optional
 from datetime import datetime
 import uuid
+import sys
+import os
+
+# Add the parent directory to the path to import ai.py
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'aI-SUGESTIONS'))
+from ai import SuggestionManager
 
 # 🔑 Add your Groq API key here
 GROQ_API_KEY = "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"
@@ -228,7 +234,7 @@ if __name__ == "__main__":
 
 
 def analyze_and_store(user_id: str) -> Optional[Dict]:
-    """Run analysis for a user, store the mental state report in Supabase and return the report."""
+    """Run analysis for a user, store the mental state report in Supabase, generate AI suggestions, and return the report."""
     report = analyze_user_mental_state(user_id)
     if not report:
         return None
@@ -244,7 +250,19 @@ def analyze_and_store(user_id: str) -> Optional[Dict]:
         # Use the shared db client to persist the report
         db.client.from_("mental_state_reports").insert(payload).execute()
         print("✅ Report saved to Supabase from analyze_and_store")
+
+        # Now trigger AI suggestions generation
+        print("🤖 Triggering AI suggestions generation...")
+        suggestion_manager = SuggestionManager()
+        suggestion_result = suggestion_manager.get_suggestions_for_user(user_id)
+
+        if suggestion_result["success"]:
+            print("✅ AI suggestions generated successfully")
+            print(f"📊 Generated {suggestion_result['suggestions_count']} suggestions for dominant state: {suggestion_result['dominant_state']}")
+        else:
+            print(f"❌ Failed to generate AI suggestions: {suggestion_result['message']}")
+
     except Exception as e:
-        print(f"❌ Error saving report in analyze_and_store: {e}")
+        print(f"❌ Error in analyze_and_store: {e}")
 
     return report

@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:safespace/main.dart';
 import 'package:flutter/material.dart';
+import 'package:safespace/config.dart';
+import 'package:http/http.dart' as http;
 import 'package:line_icons/line_icons.dart';
 import 'package:safespace/services/chat_service.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:safespace/services/mental_state_service.dart';
-import 'package:safespace/screens/suggestion_generator_widget.dart';
 
 class ChatBotScreen extends StatefulWidget {
   @override
@@ -28,6 +31,7 @@ class _ChatBotScreenState extends State<ChatBotScreen>
   // Add MentalStateService instance
   final MentalStateService _mentalStateService = MentalStateService();
   bool _analysisTriggered = false;
+  bool _suggestionsTriggered = false;
 
   // Animation controllers
   late AnimationController _typingAnimationController;
@@ -76,6 +80,7 @@ class _ChatBotScreenState extends State<ChatBotScreen>
       messages = [];
       isLoading = true;
       _analysisTriggered = false; // Reset analysis trigger for new conversation
+      _suggestionsTriggered = false; // Reset suggestions trigger for new conversation
     });
 
     try {
@@ -115,11 +120,6 @@ class _ChatBotScreenState extends State<ChatBotScreen>
           .update({'ended_at': DateTime.now().toIso8601String()})
           .eq('id', currentConversationId!);
 
-      // Generate AI suggestions based on the conversation if there are messages
-      if (messages.isNotEmpty) {
-        await _generateAndShowSuggestions();
-      }
-
       return true; // Allow back navigation
     } catch (e) {
       _showErrorSnackBar('Failed to end conversation: ${e.toString()}');
@@ -134,24 +134,53 @@ class _ChatBotScreenState extends State<ChatBotScreen>
     }
   }
 
-  // Updated method to use the new widget
+  // Simplified method without SuggestionGeneratorWidget
   Future<void> _generateAndShowSuggestions() async {
     if (userId == null || currentConversationId == null || messages.isEmpty) {
       return;
     }
 
-    final conversationMessages = messages
-        .map((msg) => msg['message'] as String)
-        .toList();
+    try {
+      // Make HTTP request to AI suggestions endpoint
+      final url = Uri.parse('${Config.apiBaseUrl}/ai-suggestions/suggestions/$userId');
+      final response = await http.get(url);
 
-    // Use the SuggestionGeneratorWidget
-    final suggestionGenerator = SuggestionGeneratorWidget(
-      conversationMessages: conversationMessages,
-      userId: userId!,
-      conversationId: currentConversationId!,
-    );
-
-    await suggestionGenerator.generateAndShowSuggestions(context);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          // Trigger homescreen refresh
+          triggerHomeScreenRefresh();
+          print('AI suggestions generated for user: $userId');
+        } else {
+          // Show error message from API
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to generate suggestions: ${data['message'] ?? 'Unknown error'}'),
+              backgroundColor: Colors.red[600],
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        // Handle HTTP error
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to connect to AI service. Please try again later.'),
+            backgroundColor: Colors.red[600],
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error generating AI suggestions: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error generating suggestions. Please check your connection.'),
+          backgroundColor: Colors.red[600],
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   // Add this method to handle back button press
@@ -166,7 +195,7 @@ class _ChatBotScreenState extends State<ChatBotScreen>
       final shouldEnd = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('End Conversation?'),
+          title: const Text('?End Conversation'),
           content: const Text(
             'Would you like to end this conversation and get personalized suggestions?',
           ),
@@ -195,20 +224,33 @@ class _ChatBotScreenState extends State<ChatBotScreen>
     }
   }
 
+  // Add this method to trigger AI suggestions after mental state analysis
+  Future<void> _triggerAISuggestions() async {
+    if (_suggestionsTriggered) return;
+
+    setState(() {
+      _suggestionsTriggered = true;
+    });
+
+    await _generateAndShowSuggestions();
+  }
+
   // Add this method to check and trigger mental state analysis
   Future<void> _checkAndTriggerMentalStateAnalysis() async {
     if (userId == null || _analysisTriggered) return;
 
     final hasEnoughMessages = await _mentalStateService.hasEnoughMessages(userId!);
-    
+
     if (hasEnoughMessages) {
       setState(() {
         _analysisTriggered = true;
       });
-      
+
       // Run analysis in background
       _mentalStateService.analyzeUserMentalState(userId!).then((_) {
         print('Mental state analysis completed for user: $userId');
+        // Trigger AI suggestions after analysis
+        _triggerAISuggestions();
       }).catchError((e) {
         print('Error in mental state analysis: $e');
       });

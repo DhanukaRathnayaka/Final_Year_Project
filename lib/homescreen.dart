@@ -1,24 +1,27 @@
 import 'package:intl/intl.dart';
+import 'package:safespace/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:line_icons/line_icons.dart';
 import 'package:safespace/screens/chatbot.dart';
 import 'package:safespace/screens/notification.dart';
 import 'package:safespace/authentication/auth_service.dart';
-import 'package:safespace/services/suggestion_service.dart';
+import 'package:safespace/screens/suggestion_generator_widget.dart';
+// Import the new widget
 
 class HomeScreen extends StatefulWidget {
   final bool isGuest;
   const HomeScreen({super.key, this.isGuest = false});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomeScreen> createState() => HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, RouteAware {
   final _authService = AuthService();
-  List<dynamic> _suggestions = [];
-  bool _isLoadingSuggestions = false;
+
+  // Global key to access RecommendedSuggestionsWidget
+  final GlobalKey<RecommendedSuggestionsWidgetState> _suggestionsWidgetKey = GlobalKey<RecommendedSuggestionsWidgetState>();
 
   // Animation controllers
   late AnimationController _fadeController;
@@ -42,12 +45,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _initializeAnimations();
-    if (!widget.isGuest) {
-      print('HomeScreen: Initializing for authenticated user');
-      _fetchAISuggestions();
-    } else {
-      print('HomeScreen: Initializing for guest user');
-    }
+    // Set the global refresh callback
+    setHomeScreenRefreshCallback(_refreshData);
+    print('HomeScreen: Initializing - Guest mode: ${widget.isGuest}');
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)!);
   }
 
   void _initializeAnimations() {
@@ -75,9 +81,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    routeObserver.unsubscribe(this);
     _fadeController.dispose();
     _slideController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    // Called when the user returns to this screen (e.g., pressing back button)
+    print('HomeScreen: User returned to home screen, refreshing data...');
+    _refreshData();
+  }
+
+  // Public method to refresh data (can be called from parent)
+  void refreshData() {
+    _refreshData();
+  }
+
+  void _refreshData() {
+    setState(() {
+      // This will trigger a rebuild and refresh all dynamic content
+      print('HomeScreen: Data refreshed');
+    });
+    // Also refresh the recommendations widget
+    _suggestionsWidgetKey.currentState?.refreshSuggestions();
   }
 
   String get _userGreeting {
@@ -107,56 +135,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
-  Future<void> _fetchAISuggestions() async {
-    setState(() {
-      _isLoadingSuggestions = true;
-    });
-
+  // Get current user ID for authenticated users
+  String? get _currentUserId {
+    if (widget.isGuest) return null;
     try {
-      final suggestionService = SuggestionService();
-      final suggestions = await suggestionService.getSuggestions();
-      print('Fetched suggestions: $suggestions'); // Debug log
-
-      // Process the suggestions to match the expected format
-      List<dynamic> processedSuggestions = [];
-
-      // Add doctor suggestions
-      if (suggestions['doctors'] != null && suggestions['doctors'].isNotEmpty) {
-        for (var doctor in suggestions['doctors']) {
-          processedSuggestions.add({
-            'title': 'Doctor Recommendation',
-            'description':
-                'We recommend consulting with ${doctor['name']} who specializes in ${doctor['dominant_state'] ?? 'general mental health'}',
-            'type': 'doctor',
-            'data': doctor,
-          });
-        }
-      }
-
-      // Add entertainment suggestions
-      if (suggestions['entertainments'] != null &&
-          suggestions['entertainments'].isNotEmpty) {
-        for (var entertainment in suggestions['entertainments']) {
-          processedSuggestions.add({
-            'title': entertainment['title'] ?? 'Entertainment',
-            'description': entertainment['type'] ?? 'Entertainment suggestion',
-            'type': 'entertainment',
-            'data': entertainment,
-          });
-        }
-      }
-
-      print('Processed suggestions: $processedSuggestions'); // Debug log
-      setState(() {
-        _suggestions = processedSuggestions;
-        _isLoadingSuggestions = false;
-      });
+      return _authService.getCurrentUserId();
     } catch (e) {
-      print('Error fetching AI suggestions: $e');
-      setState(() {
-        _suggestions = [];
-        _isLoadingSuggestions = false;
-      });
+      debugPrint('Error getting user ID: $e');
+      return null;
     }
   }
 
@@ -164,46 +150,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      body: RefreshIndicator(
-        onRefresh: widget.isGuest ? () async {} : _fetchAISuggestions,
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Header Section with Dynamic Background
-              _buildHeaderSection(),
-              // small spacer so the header bg doesn't overlap the next card
-              Container(height: 12),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Header Section with Dynamic Background
+            _buildHeaderSection(),
+            // small spacer so the header bg doesn't overlap the next card
+            Container(height: 12),
 
-              // Main Content
-              FadeTransition(
-                opacity: _fadeAnimation,
-                child: SlideTransition(
-                  position: _slideAnimation,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Column(
-                      children: [
-                        // Chat Card
-                        _buildChatCard(),
+            // Main Content
+            FadeTransition(
+              opacity: _fadeAnimation,
+              child: SlideTransition(
+                position: _slideAnimation,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Column(
+                    children: [
+                      // Chat Card
+                      _buildChatCard(),
 
-                        const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                        // Suggestions Section
-                        _buildSuggestionsSection(),
+                      // Recommendations Section
+                      _buildRecommendationsSection(),
 
-                        const SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
-                        // Suggestion Cards
-                        _buildSuggestionCards(),
+                      // Recommendations Widget
+                      _buildRecommendationsWidget(),
 
-                        const SizedBox(height: 100), // Bottom padding for FAB
-                      ],
-                    ),
+                      const SizedBox(height: 100), // Bottom padding for FAB
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
       floatingActionButton: widget.isGuest ? _buildGuestFAB() : null,
@@ -325,7 +308,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
                   const Spacer(),
 
-                  // Greeting Section (kept content exactly as before)
+                  // Greeting Section
                   Padding(
                     padding: const EdgeInsets.all(24.0),
                     child: Column(
@@ -471,7 +454,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildSuggestionsSection() {
+  Widget _buildRecommendationsSection() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -479,7 +462,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "AI Suggestions",
+              "Your Recommendations",
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -487,7 +470,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
             Text(
-              "Personalized recommendations for you",
+              widget.isGuest 
+                ? "Sign in to see personalized suggestions"
+                : "Based on your recent conversations",
               style: TextStyle(fontSize: 12, color: Colors.grey[600]),
             ),
           ],
@@ -505,40 +490,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           )
         else
-          IconButton(
-            onPressed: _isLoadingSuggestions ? null : _fetchAISuggestions,
-            icon: _isLoadingSuggestions
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.blue[600]!,
-                      ),
-                    ),
-                  )
-                : Icon(Icons.refresh, color: Colors.blue[600]),
-            tooltip: 'Refresh suggestions',
-          ),
+          Container(), // Empty container for layout consistency
       ],
     );
   }
 
-  Widget _buildSuggestionCards() {
-    if (_isLoadingSuggestions) {
+  Widget _buildRecommendationsWidget() {
+    if (widget.isGuest) {
+      return _buildGuestRecommendations();
+    }
+
+    final userId = _currentUserId;
+    if (userId == null) {
       return Container(
         height: 120,
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
-              ),
-              const SizedBox(height: 12),
+              Icon(Icons.error_outline, color: Colors.grey[400], size: 40),
+              const SizedBox(height: 8),
               Text(
-                'Loading suggestions...',
+                'Unable to load recommendations',
                 style: TextStyle(color: Colors.grey[600], fontSize: 14),
               ),
             ],
@@ -547,134 +520,112 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       );
     }
 
-    if (_suggestions.isNotEmpty) {
-      return Column(
-        children: _suggestions.map((suggestion) {
-          return _buildSuggestionCard(
-            icon: suggestion['type'] == 'doctor'
-                ? Icons.medical_services
-                : Icons.movie,
-            title: suggestion['title'] ?? 'Suggestion',
-            subtitle:
-                suggestion['description'] ??
-                'Personalized suggestion based on your conversation',
-            iconColor: suggestion['type'] == 'doctor'
-                ? Colors.red[600]!
-                : Colors.purple[600]!,
-            isLocked: widget.isGuest,
-            onTap: widget.isGuest
-                ? null
-                : () => _handleSuggestionTap(suggestion),
-          );
-        }).toList(),
-      );
-    }
+    return RecommendedSuggestionsWidget(key: _suggestionsWidgetKey, userId: userId);
+  }
 
-    // Default suggestions if no AI suggestions
+  Widget _buildGuestRecommendations() {
     return Column(
       children: [
-        _buildSuggestionCard(
+        _buildGuestSuggestionCard(
           icon: Icons.visibility_outlined,
           title: "Limit Exposure to Screens",
           subtitle: "Control your screen time for better mental health",
           iconColor: Colors.green[600]!,
-          isLocked: widget.isGuest,
         ),
-        _buildSuggestionCard(
+        const SizedBox(height: 12),
+        _buildGuestSuggestionCard(
           icon: Icons.bed,
           title: "Improve Sleep Quality",
           subtitle: "Maintain a consistent sleep schedule",
           iconColor: Colors.orange[600]!,
-          isLocked: widget.isGuest,
+        ),
+        const SizedBox(height: 12),
+        _buildGuestSuggestionCard(
+          icon: Icons.sports_gymnastics,
+          title: "Regular Exercise",
+          subtitle: "Stay active for mental and physical well-being",
+          iconColor: Colors.blue[600]!,
         ),
       ],
     );
   }
 
-  Widget _buildSuggestionCard({
+  Widget _buildGuestSuggestionCard({
     required IconData icon,
     required String title,
     required String subtitle,
     required Color iconColor,
-    bool isLocked = false,
-    VoidCallback? onTap,
   }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
-      child: TweenAnimationBuilder(
-        tween: Tween<double>(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 500),
-        builder: (context, value, child) {
-          return Opacity(
-            opacity: value,
-            child: Transform.translate(
-              offset: Offset(0, (1 - value) * 20),
-              child: child,
-            ),
-          );
-        },
-        child: GestureDetector(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: iconColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    isLocked ? Icons.lock_outline : icon,
-                    color: isLocked ? Colors.grey[400] : iconColor,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: isLocked ? Colors.grey[400] : Colors.grey[900],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        isLocked ? "Sign in to view details" : subtitle,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: isLocked ? Colors.grey[400] : Colors.grey[600],
-                          height: 1.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  isLocked ? Icons.lock : Icons.arrow_forward_ios,
-                  size: 16,
-                  color: isLocked ? Colors.grey[400] : Colors.grey[400],
-                ),
-              ],
-            ),
+    return TweenAnimationBuilder(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 500),
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, (1 - value) * 20),
+            child: child,
           ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.lock_outline,
+                color: Colors.grey[400],
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[400],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Sign in to view details",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[400],
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.lock,
+              size: 16,
+              color: Colors.grey[400],
+            ),
+          ],
         ),
       ),
     );
@@ -692,48 +643,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     );
-  }
-
-  void _handleSuggestionTap(Map<String, dynamic> suggestion) {
-    if (suggestion['type'] == 'doctor') {
-      // Navigate to doctor screen or show doctor details
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.medical_services, color: Colors.white),
-              SizedBox(width: 8),
-              Expanded(child: Text('Doctor: ${suggestion['data']['name']}')),
-            ],
-          ),
-          backgroundColor: Colors.red[600],
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    } else if (suggestion['type'] == 'entertainment') {
-      // Navigate to entertainment screen or show entertainment details
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.movie, color: Colors.white),
-              SizedBox(width: 8),
-              Expanded(child: Text('Entertainment: ${suggestion['title']}')),
-            ],
-          ),
-          backgroundColor: Colors.purple[600],
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
   }
 
   void _showGuestRestriction(BuildContext context) {

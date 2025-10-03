@@ -19,8 +19,11 @@ class NavManager extends StatefulWidget {
 class _NavManagerState extends State<NavManager> {
   int _selectedIndex = 0;
 
+  // Global key to access HomeScreen methods
+  final GlobalKey<HomeScreenState> _homeScreenKey = GlobalKey<HomeScreenState>();
+
   late final List<Widget> _screens = [
-    const HomeScreen(),
+    HomeScreen(key: _homeScreenKey),
     const EntertainmentScreen(),
     if (!widget.isGuest)  DoctorScreen() else const SizedBox.shrink(),
     if (!widget.isGuest) const ProfilePage() else const SizedBox.shrink(),
@@ -37,6 +40,12 @@ class _NavManagerState extends State<NavManager> {
       );
       return;
     }
+
+    // If switching to home tab (index 0), refresh the home screen
+    if (index == 0 && _selectedIndex != 0) {
+      _homeScreenKey.currentState?.refreshData();
+    }
+
     setState(() => _selectedIndex = index);
   }
 

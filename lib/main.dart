@@ -11,6 +11,21 @@ import 'package:safespace/services/mental_state_service.dart';
 // Add this to your main.dart or create a service locators
 MentalStateService mentalStateService = MentalStateService();
 
+// Global RouteObserver for navigation tracking
+final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
+
+// Global callback for refreshing homescreen
+typedef HomeScreenRefreshCallback = void Function();
+HomeScreenRefreshCallback? _homeScreenRefreshCallback;
+
+void setHomeScreenRefreshCallback(HomeScreenRefreshCallback callback) {
+  _homeScreenRefreshCallback = callback;
+}
+
+void triggerHomeScreenRefresh() {
+  _homeScreenRefreshCallback?.call();
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -32,6 +47,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(primarySwatch: Colors.blue),
       home: const AuthGate(),
       debugShowCheckedModeBanner: false,
+      navigatorObservers: [routeObserver],
       routes: {
         '/login': (context) => const LoginPage(),
         '/signup': (context) => const SignUpPage(),
