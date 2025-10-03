@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:line_icons/line_icons.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:safespace/authentication/auth_service.dart';
-import 'package:line_icons/line_icons.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -176,10 +176,10 @@ class _ProfilePageState extends State<ProfilePage>
             Container(
               padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.indigo[100],
+                color: Theme.of(context).primaryColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(LineIcons.user, color: Colors.indigo[700], size: 24),
+              child: Icon(LineIcons.user, color: Theme.of(context).primaryColor, size: 24),
             ),
             SizedBox(width: 12),
             Column(
@@ -201,7 +201,7 @@ class _ProfilePageState extends State<ProfilePage>
         elevation: 0,
         actions: [
           IconButton(
-            icon: Icon(Icons.settings, color: Colors.indigo[600]),
+            icon: Icon(Icons.settings, color: Theme.of(context).primaryColor),
             onPressed: () {
               // TODO: Navigate to settings
               _showSuccessSnackBar('Settings coming soon!');
@@ -243,10 +243,10 @@ class _ProfilePageState extends State<ProfilePage>
           Container(
             padding: EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.indigo[50],
+              color: Theme.of(context).primaryColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Icon(LineIcons.user, size: 48, color: Colors.indigo[600]),
+            child: Icon(LineIcons.user, size: 48, color: Theme.of(context).primaryColor),
           ),
           SizedBox(height: 16),
           Text(
@@ -255,7 +255,7 @@ class _ProfilePageState extends State<ProfilePage>
           ),
           SizedBox(height: 8),
           CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.indigo[600]!),
+            valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).primaryColor),
           ),
         ],
       ),
@@ -282,7 +282,10 @@ class _ProfilePageState extends State<ProfilePage>
             padding: EdgeInsets.all(24),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Colors.indigo[50]!, Colors.indigo[100]!],
+                colors: [
+                  Theme.of(context).primaryColor.withOpacity(0.1),
+                  Theme.of(context).primaryColor.withOpacity(0.05)
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -294,7 +297,7 @@ class _ProfilePageState extends State<ProfilePage>
                   children: [
                     CircleAvatar(
                       radius: 60,
-                      backgroundColor: Colors.indigo[200],
+                      backgroundColor: Theme.of(context).primaryColor.withOpacity(0.3),
                       backgroundImage: _avatarUrl != null
                           ? NetworkImage(_avatarUrl!)
                           : null,
@@ -302,7 +305,7 @@ class _ProfilePageState extends State<ProfilePage>
                           ? Icon(
                               LineIcons.user,
                               size: 60,
-                              color: Colors.indigo[700],
+                              color: Theme.of(context).primaryColor,
                             )
                           : null,
                     ),
@@ -328,7 +331,7 @@ class _ProfilePageState extends State<ProfilePage>
                       right: 0,
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.indigo[600],
+                          color: Theme.of(context).primaryColor,
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 3),
                         ),
@@ -468,7 +471,7 @@ class _ProfilePageState extends State<ProfilePage>
         children: [
           Row(
             children: [
-              Icon(Icons.info_outline, color: Colors.indigo[600]),
+              Icon(Icons.info_outline, color: Theme.of(context).primaryColor),
               SizedBox(width: 8),
               Text(
                 'Account Information',
@@ -490,15 +493,15 @@ class _ProfilePageState extends State<ProfilePage>
           Container(
             padding: EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.indigo[50],
+              color: Theme.of(context).primaryColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.indigo[200]!),
+              border: Border.all(color: Theme.of(context).primaryColor.withOpacity(0.3)),
             ),
             child: Row(
               children: [
                 Icon(
                   Icons.verified_outlined,
-                  color: Colors.indigo[600],
+                  color: Theme.of(context).primaryColor,
                   size: 20,
                 ),
                 SizedBox(width: 8),
@@ -507,7 +510,7 @@ class _ProfilePageState extends State<ProfilePage>
                     'Your account is verified and secure',
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.indigo[700],
+                      color: Theme.of(context).primaryColor.withOpacity(0.8),
                       fontStyle: FontStyle.italic,
                     ),
                   ),

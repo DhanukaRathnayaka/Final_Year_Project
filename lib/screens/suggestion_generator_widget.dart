@@ -178,117 +178,141 @@ class RecommendedSuggestionsWidgetState extends State<RecommendedSuggestionsWidg
   }
 
   void _showSuggestionDetail(Map<String, dynamic> suggestionData) {
-    final suggestion = suggestionData['suggestions'] as Map<String, dynamic>?;
-    
-    if (suggestion == null) return;
+  final suggestion = suggestionData['suggestions'] as Map<String, dynamic>?;
+  
+  if (suggestion == null) return;
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) => Container(
+      height: MediaQuery.of(context).size.height * 0.7,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            // Drag handle
-            Container(
-              margin: const EdgeInsets.only(top: 8, bottom: 8),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          suggestion['logo'] ?? '💡',
-                          style: const TextStyle(fontSize: 32),
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.close, size: 24),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      suggestion['suggestion'] ?? 'No Title',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      suggestion['description'] ?? 'No description available',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        Chip(
-                          label: Text(
-                            suggestion['category'] ?? 'Unknown',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                          backgroundColor: _getCategoryColor(suggestion['category']),
-                        ),
-                        Chip(
-                          label: Text(
-                            suggestionData['dominant_state'] ?? 'Unknown',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                          backgroundColor: Colors.blue[800],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    if (suggestionData['recommended_at'] != null)
-                      Text(
-                        'Recommended on ${_formatDate(suggestionData['recommended_at'])}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[500],
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+        ],
       ),
-    );
-  }
+      child: Column(
+        children: [
+          // Drag handle
+          Container(
+            margin: const EdgeInsets.only(top: 8, bottom: 8),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              _getCategoryColor(suggestion['category']).withOpacity(0.15),
+                              _getCategoryColor(suggestion['category']).withOpacity(0.05),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: _getCategoryColor(suggestion['category']).withOpacity(0.2),
+                            width: 2,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            suggestion['logo'] ?? '💡',
+                            style: const TextStyle(fontSize: 28),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close, size: 24),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    suggestion['suggestion'] ?? 'No Title',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    suggestion['description'] ?? 'No description available',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Only show the recommendation date
+                  if (suggestionData['recommended_at'] != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.grey[200]!,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.calendar_today,
+                            size: 16,
+                            color: Colors.grey[600],
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Recommended on ${_formatDate(suggestionData['recommended_at'])}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 
   String _formatDate(dynamic date) {
     try {
@@ -305,21 +329,21 @@ class RecommendedSuggestionsWidgetState extends State<RecommendedSuggestionsWidg
   Color _getCategoryColor(String? category) {
     switch (category) {
       case 'happy/positive':
-        return Colors.green;
+        return Colors.green.shade600;
       case 'stressed/anxious':
-        return Colors.orange;
+        return Colors.orange.shade600;
       case 'depressed/sad':
-        return Colors.blue;
+        return Colors.teal.shade800;
       case 'angry/frustrated':
-        return Colors.red;
+        return Colors.red.shade600;
       case 'neutral/calm':
-        return Colors.grey;
+        return Colors.grey.shade600;
       case 'confused/uncertain':
-        return Colors.purple;
+        return Colors.purple.shade600;
       case 'excited/energetic':
-        return Colors.yellow.shade700;
+        return Colors.amber.shade700;
       default:
-        return Colors.grey;
+        return Colors.grey.shade600;
     }
   }
 
@@ -372,7 +396,7 @@ class RecommendedSuggestionsWidgetState extends State<RecommendedSuggestionsWidg
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
+              valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).primaryColor),
             ),
             const SizedBox(height: 12),
             Text(
@@ -400,7 +424,7 @@ class RecommendedSuggestionsWidgetState extends State<RecommendedSuggestionsWidg
           ElevatedButton(
             onPressed: _refreshSuggestions,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue[600],
+              backgroundColor: Theme.of(context).primaryColor,
               foregroundColor: Colors.white,
             ),
             child: const Text('Retry'),

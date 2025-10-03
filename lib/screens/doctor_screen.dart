@@ -138,12 +138,12 @@ class _DoctorScreenState extends State<DoctorScreen>
             Container(
               padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.teal[50],
+                color: Theme.of(context).primaryColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 Icons.medical_services,
-                color: Colors.teal[600],
+                color: Theme.of(context).primaryColor,
                 size: 24,
               ),
             ),
@@ -174,11 +174,11 @@ class _DoctorScreenState extends State<DoctorScreen>
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.teal[600]!,
+                        Theme.of(context).primaryColor,
                       ),
                     ),
                   )
-                : Icon(Icons.refresh, color: Colors.teal[600]),
+                : Icon(Icons.refresh, color: Theme.of(context).primaryColor),
             onPressed: isRefreshing ? null : _fetchDoctor,
             tooltip: 'Refresh doctor info',
           ),
@@ -200,13 +200,13 @@ class _DoctorScreenState extends State<DoctorScreen>
           Container(
             padding: EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.teal[50],
+              color: Theme.of(context).primaryColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Icon(
               Icons.medical_services,
               size: 48,
-              color: Colors.teal[600],
+              color: Theme.of(context).primaryColor,
             ),
           ),
           SizedBox(height: 16),
@@ -216,7 +216,7 @@ class _DoctorScreenState extends State<DoctorScreen>
           ),
           SizedBox(height: 8),
           CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.teal[600]!),
+            valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).primaryColor),
           ),
         ],
       ),
@@ -233,13 +233,13 @@ class _DoctorScreenState extends State<DoctorScreen>
             Container(
               padding: EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.teal[50],
+                color: Theme.of(context).primaryColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Icon(
                 Icons.medical_services_outlined,
                 size: 48,
-                color: Colors.teal[600],
+                color: Theme.of(context).primaryColor,
               ),
             ),
             SizedBox(height: 16),
@@ -267,7 +267,7 @@ class _DoctorScreenState extends State<DoctorScreen>
               icon: Icon(Icons.refresh),
               label: Text('Try Again'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal[600],
+                backgroundColor: Theme.of(context).primaryColor,
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
@@ -283,7 +283,7 @@ class _DoctorScreenState extends State<DoctorScreen>
               },
               icon: Icon(Icons.chat_bubble_outline),
               label: Text('Start Conversation'),
-              style: TextButton.styleFrom(foregroundColor: Colors.teal[600]),
+              style: TextButton.styleFrom(foregroundColor: Theme.of(context).primaryColor),
             ),
           ],
         ),
@@ -332,8 +332,8 @@ class _DoctorScreenState extends State<DoctorScreen>
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            Colors.teal[50]!,
-                            Colors.teal[100]!.withOpacity(0.7),
+                            Theme.of(context).primaryColor.withOpacity(0.1),
+                            Theme.of(context).primaryColor.withOpacity(0.05),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -351,7 +351,7 @@ class _DoctorScreenState extends State<DoctorScreen>
                               color: Colors.white,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.teal.withOpacity(0.2),
+                                  color: Theme.of(context).primaryColor.withOpacity(0.2),
                                   blurRadius: 12,
                                   spreadRadius: 2,
                                 ),
@@ -360,7 +360,7 @@ class _DoctorScreenState extends State<DoctorScreen>
                             child: Icon(
                               Icons.medical_services,
                               size: 50,
-                              color: Colors.teal[600],
+                              color: Theme.of(context).primaryColor,
                             ),
                           ),
                           SizedBox(height: 16),
@@ -387,11 +387,11 @@ class _DoctorScreenState extends State<DoctorScreen>
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color.fromARGB(255, 82, 172, 167),
+                              color: Theme.of(context).primaryColor,
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: Text(
-                              'Specializes in $dominantState',
+                              'Mental Health Specialist',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -412,14 +412,14 @@ class _DoctorScreenState extends State<DoctorScreen>
                             icon: Icons.email_outlined,
                             title: 'Email',
                             value: email,
-                            color: Colors.teal[600]!,
+                            color: Theme.of(context).primaryColor,
                           ),
                           SizedBox(height: 16),
                           _buildContactItem(
                             icon: Icons.phone_outlined,
                             title: 'Phone',
                             value: phone,
-                            color: Colors.teal[600]!,
+                            color: Theme.of(context).primaryColor,
                           ),
                           SizedBox(height: 24),
 
@@ -433,19 +433,19 @@ class _DoctorScreenState extends State<DoctorScreen>
                                   icon: Icon(
                                     Icons.email,
                                     size: 20,
-                                    color: Colors.teal[600],
+                                    color: Theme.of(context).primaryColor,
                                   ),
                                   label: Text(
                                     'Send Email',
-                                    style: TextStyle(color: Colors.teal[700]),
+                                    style: TextStyle(color: Theme.of(context).primaryColor.withOpacity(0.8)),
                                   ),
                                   style: OutlinedButton.styleFrom(
                                     padding: EdgeInsets.symmetric(vertical: 12),
-                                    side: BorderSide(color: Colors.teal[300]!),
+                                    side: BorderSide(color: Theme.of(context).primaryColor.withOpacity(0.5)),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(25),
                                     ),
-                                    backgroundColor: Colors.teal[50],
+                                    backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
                                   ),
                                 ),
                               ),
@@ -457,19 +457,19 @@ class _DoctorScreenState extends State<DoctorScreen>
                                   icon: Icon(
                                     Icons.phone,
                                     size: 20,
-                                    color: Colors.teal[600],
+                                    color: Theme.of(context).primaryColor,
                                   ),
                                   label: Text(
                                     'Call',
-                                    style: TextStyle(color: Colors.teal[700]),
+                                    style: TextStyle(color: Theme.of(context).primaryColor.withOpacity(0.8)),
                                   ),
                                   style: OutlinedButton.styleFrom(
                                     padding: EdgeInsets.symmetric(vertical: 12),
-                                    side: BorderSide(color: Colors.teal[300]!),
+                                    side: BorderSide(color: Theme.of(context).primaryColor.withOpacity(0.5)),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(25),
                                     ),
-                                    backgroundColor: Colors.teal[50],
+                                    backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
                                   ),
                                 ),
                               ),
@@ -517,7 +517,7 @@ class _DoctorScreenState extends State<DoctorScreen>
                     ),
                     SizedBox(height: 12),
                     Text(
-                      'Dr. $name is a qualified mental health professional specializing in $dominantState. They have been carefully matched to your needs based on your mental state assessment.',
+                      'Dr. $name is a qualified mental health professional. They have been carefully matched to your needs based on your mental state assessment.',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey[700],
@@ -528,15 +528,15 @@ class _DoctorScreenState extends State<DoctorScreen>
                     Container(
                       padding: EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.teal[50],
+                        color: Theme.of(context).primaryColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.teal[200]!),
+                        border: Border.all(color: Theme.of(context).primaryColor.withOpacity(0.3)),
                       ),
                       child: Row(
                         children: [
                           Icon(
                             Icons.lightbulb_outline,
-                            color: Colors.teal[600],
+                            color: Theme.of(context).primaryColor,
                             size: 20,
                           ),
                           SizedBox(width: 8),
@@ -545,7 +545,7 @@ class _DoctorScreenState extends State<DoctorScreen>
                               'Feel free to reach out anytime. Your doctor is here to support your mental health journey.',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.teal[700],
+                                color: Theme.of(context).primaryColor.withOpacity(0.8),
                                 fontStyle: FontStyle.italic,
                               ),
                             ),
@@ -574,10 +574,10 @@ class _DoctorScreenState extends State<DoctorScreen>
         Container(
           padding: EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: Theme.of(context).primaryColor.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, color: color, size: 20),
+          child: Icon(icon, color: Theme.of(context).primaryColor, size: 20),
         ),
         SizedBox(width: 12),
         Expanded(

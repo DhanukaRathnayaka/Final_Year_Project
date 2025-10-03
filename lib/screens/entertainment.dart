@@ -129,13 +129,24 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
           final entertainment = item['entertainments'] as Map<String, dynamic>;
           return {
             ...entertainment,
-            'matched_state': item['matched_state'],
             'recommended_at': item['recommended_at'],
           };
         }).toList();
 
+        // Remove duplicates based on id to prevent duplication when navigating back
+        final uniqueItems = <Map<String, dynamic>>[];
+        final seenIds = <dynamic>{};
+
+        for (final item in items) {
+          final id = item['id'];
+          if (id != null && !seenIds.contains(id)) {
+            seenIds.add(id);
+            uniqueItems.add(item);
+          }
+        }
+
         setState(() {
-          entertainmentItems = items;
+          entertainmentItems = uniqueItems;
           isLoading = false;
           errorMessage = '';
         });
@@ -296,7 +307,6 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
     final title = item['title'] ?? 'Unknown Title';
     final type = item['type'] ?? 'Unknown Type';
     final coverImgUrl = item['cover_img_url'];
-    final matchedState = item['matched_state'];
     final recommendedAt = item['recommended_at'];
 
     return Card(
@@ -345,16 +355,6 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
                 color: Colors.grey[600],
               ),
             ),
-            if (matchedState != null) ...[
-              const SizedBox(height: 2),
-              Text(
-                "Matches your: $matchedState",
-                style: const TextStyle(
-                  fontSize: 12.0,
-                  color: Colors.green,
-                ),
-              ),
-            ],
             if (recommendedAt != null) ...[
               const SizedBox(height: 2),
               Text(

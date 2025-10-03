@@ -7,7 +7,6 @@ import 'package:safespace/screens/chatbot.dart';
 import 'package:safespace/screens/notification.dart';
 import 'package:safespace/authentication/auth_service.dart';
 import 'package:safespace/screens/suggestion_generator_widget.dart';
-// Import the new widget
 
 class HomeScreen extends StatefulWidget {
   final bool isGuest;
@@ -28,6 +27,13 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+
+  // Custom theme color
+  final Color _primaryColor = const Color(0xFF62ceb3);
+  final Color _backgroundColor = const Color(0xFFf8fdfb);
+  final Color _surfaceColor = const Color(0xFFffffff);
+  final Color _onBackgroundColor = const Color(0xFF1a1a1a);
+  final Color _onSurfaceColor = const Color(0xFF2d2d2d);
 
   // Background image selection with alignment based on time of day
   String get _backgroundImage {
@@ -149,7 +155,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: _backgroundColor,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -398,14 +404,17 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.blue[50]!, Colors.blue[100]!],
+              colors: [
+                _primaryColor.withOpacity(0.1),
+                _primaryColor.withOpacity(0.05)
+              ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.blue.withOpacity(0.1),
+                color: _primaryColor.withOpacity(0.1),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -416,7 +425,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue[600],
+                  color: _primaryColor,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(LineIcons.robot, color: Colors.white, size: 24),
@@ -433,7 +442,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.blue[800],
+                        color: _primaryColor.withOpacity(0.8),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -441,12 +450,19 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
                       widget.isGuest
                           ? "Get personalized mental health support"
                           : "Your AI companion is ready to listen",
-                      style: TextStyle(fontSize: 14, color: Colors.blue[600]),
+                      style: TextStyle(
+                        fontSize: 14, 
+                        color: _primaryColor,
+                      ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios, color: Colors.blue[600], size: 20),
+              Icon(
+                Icons.arrow_forward_ios, 
+                color: _primaryColor, 
+                size: 20
+              ),
             ],
           ),
         ),
@@ -466,14 +482,17 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
+                color: _onBackgroundColor,
               ),
             ),
             Text(
               widget.isGuest 
                 ? "Sign in to see personalized suggestions"
                 : "Based on your recent conversations",
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              style: TextStyle(
+                fontSize: 12, 
+                color: _onSurfaceColor.withOpacity(0.6),
+              ),
             ),
           ],
         ),
@@ -485,7 +504,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
             icon: const Icon(Icons.login, size: 16),
             label: const Text('Sign In'),
             style: TextButton.styleFrom(
-              foregroundColor: Colors.blue[600],
+              foregroundColor: _primaryColor,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             ),
           )
@@ -508,11 +527,11 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, color: Colors.grey[400], size: 40),
+              Icon(Icons.error_outline, color: _onSurfaceColor.withOpacity(0.4), size: 40),
               const SizedBox(height: 8),
               Text(
                 'Unable to load recommendations',
-                style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                style: TextStyle(color: _onSurfaceColor.withOpacity(0.6), fontSize: 14),
               ),
             ],
           ),
@@ -530,21 +549,21 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
           icon: Icons.visibility_outlined,
           title: "Limit Exposure to Screens",
           subtitle: "Control your screen time for better mental health",
-          iconColor: Colors.green[600]!,
+          iconColor: _primaryColor,
         ),
         const SizedBox(height: 12),
         _buildGuestSuggestionCard(
           icon: Icons.bed,
           title: "Improve Sleep Quality",
           subtitle: "Maintain a consistent sleep schedule",
-          iconColor: Colors.orange[600]!,
+          iconColor: _primaryColor,
         ),
         const SizedBox(height: 12),
         _buildGuestSuggestionCard(
           icon: Icons.sports_gymnastics,
           title: "Regular Exercise",
           subtitle: "Stay active for mental and physical well-being",
-          iconColor: Colors.blue[600]!,
+          iconColor: _primaryColor,
         ),
       ],
     );
@@ -571,7 +590,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: _surfaceColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -591,7 +610,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
               ),
               child: Icon(
                 Icons.lock_outline,
-                color: Colors.grey[400],
+                color: _onSurfaceColor.withOpacity(0.4),
                 size: 24,
               ),
             ),
@@ -605,7 +624,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.grey[400],
+                      color: _onSurfaceColor.withOpacity(0.4),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -613,7 +632,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
                     "Sign in to view details",
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.grey[400],
+                      color: _onSurfaceColor.withOpacity(0.4),
                       height: 1.3,
                     ),
                   ),
@@ -623,7 +642,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
             Icon(
               Icons.lock,
               size: 16,
-              color: Colors.grey[400],
+              color: _onSurfaceColor.withOpacity(0.4),
             ),
           ],
         ),
@@ -638,7 +657,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
       },
       icon: const Icon(Icons.login),
       label: const Text('Sign In'),
-      backgroundColor: Colors.blue[600],
+      backgroundColor: _primaryColor,
       foregroundColor: Colors.white,
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -662,22 +681,31 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
                 ),
                 title: Row(
                   children: [
-                    Icon(Icons.lock_outline, color: Colors.blue[600]),
-                    SizedBox(width: 8),
+                    Icon(Icons.lock_outline, color: _primaryColor),
+                    const SizedBox(width: 8),
                     Text(
                       'Guest Mode Restriction',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: _onBackgroundColor,
+                      ),
                     ),
                   ],
                 ),
                 content: Text(
                   'Please sign in to access all features and personalized content.',
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: _onSurfaceColor,
+                  ),
                 ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: Text('Later'),
+                    child: Text(
+                      'Later',
+                      style: TextStyle(color: _primaryColor),
+                    ),
                   ),
                   ElevatedButton(
                     onPressed: () {
@@ -685,13 +713,13 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
                       Navigator.pushReplacementNamed(context, '/login');
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue[600],
+                      backgroundColor: _primaryColor,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: Text('Sign In Now'),
+                    child: const Text('Sign In Now'),
                   ),
                 ],
               ),
