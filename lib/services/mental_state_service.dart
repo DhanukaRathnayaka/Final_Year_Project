@@ -6,7 +6,7 @@ class MentalStateService {
   // TODO: Move API key to environment variables or secure configuration
   // This should be loaded from a secure source, not hardcoded
   static const String _groqApiKey =
-      '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';
+      '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';
   final SupabaseClient _supabase = Supabase.instance.client;
 
   static const List<String> mentalConditions = [

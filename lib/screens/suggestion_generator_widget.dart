@@ -451,101 +451,152 @@ class RecommendedSuggestionsWidgetState extends State<RecommendedSuggestionsWidg
   }
 
   Widget _buildSuggestionCard(
-    Map<String, dynamic> item, 
-    Map<String, dynamic> suggestion, 
-    int index
-  ) {
-    return AnimatedContainer(
-      duration: Duration(milliseconds: 300 + (index * 100)),
-      curve: Curves.easeOut,
-      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 6),
-      child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(16),
-          leading: Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: _getCategoryColor(suggestion['category']).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Center(
-              child: Text(
-                suggestion['logo'] ?? '💡',
-                style: const TextStyle(fontSize: 20),
-              ),
+  Map<String, dynamic> item, 
+  Map<String, dynamic> suggestion, 
+  int index
+) {
+  final categoryColor = _getCategoryColor(suggestion['category']);
+  
+  return AnimatedContainer(
+    duration: Duration(milliseconds: 300 + (index * 100)),
+    curve: Curves.easeOut,
+    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+    child: Card(
+      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      shadowColor: Colors.black.withOpacity(0.1),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => _showSuggestionDetail(item),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white,
+                categoryColor.withOpacity(0.03),
+              ],
             ),
           ),
-          title: Text(
-            suggestion['suggestion'] ?? 'No Title',
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 4),
-              Text(
-                suggestion['description'] ?? 'No description',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 13, height: 1.3),
-              ),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 6,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: _getCategoryColor(suggestion['category']).withOpacity(0.8),
-                      borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Emoji/Logo container
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        categoryColor.withOpacity(0.15),
+                        categoryColor.withOpacity(0.05),
+                      ],
                     ),
-                    child: Text(
-                      suggestion['category'] ?? 'Unknown',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: categoryColor.withOpacity(0.2),
+                      width: 1.5,
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[800]!.withOpacity(0.8),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                  child: Center(
                     child: Text(
-                      item['dominant_state'] ?? 'Unknown',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      suggestion['logo'] ?? '💡',
+                      style: const TextStyle(fontSize: 22),
                     ),
                   ),
-                ],
-              ),
-            ],
+                ),
+                const SizedBox(width: 16),
+                
+                // Content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title
+                      Text(
+                        suggestion['suggestion'] ?? 'No Title',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: Colors.black87,
+                          height: 1.3,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                      
+                      // Description
+                      Text(
+                        suggestion['description'] ?? 'No description available',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                          height: 1.4,
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 12),
+                      
+                      // Bottom row with date and arrow
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          // Recommended date
+                          if (item['recommended_at'] != null)
+                            Text(
+                              '${_formatDate(item['recommended_at'])}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          
+                          // Empty space when no date
+                          if (item['recommended_at'] == null)
+                            const SizedBox.shrink(),
+                          
+                          // Arrow icon
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[50],
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.grey[200]!,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 16,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-          trailing: Icon(
-            Icons.arrow_forward_ios,
-            size: 16,
-            color: Colors.grey[400],
-          ),
-          onTap: () => _showSuggestionDetail(item),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
