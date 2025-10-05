@@ -73,38 +73,32 @@ class RecommendedSuggestionsWidgetState extends State<RecommendedSuggestionsWidg
 
   void _handleInsert(PostgresChangePayload payload) {
     final newRecord = payload.newRecord;
-    if (newRecord != null) {
-      // Fetch the complete data with join
-      _fetchNewSuggestionDetails(newRecord['id']);
+    // Fetch the complete data with join
+    _fetchNewSuggestionDetails(newRecord['id']);
     }
-  }
 
   void _handleUpdate(PostgresChangePayload payload) {
     final updatedRecord = payload.newRecord;
-    if (updatedRecord != null) {
-      setState(() {
-        final index = _suggestions.indexWhere(
-          (item) => item['id'] == updatedRecord['id']
-        );
-        if (index != -1) {
-          // Update existing record
-          _suggestions[index] = {
-            ..._suggestions[index],
-            ...updatedRecord,
-          };
-        }
-      });
+    setState(() {
+      final index = _suggestions.indexWhere(
+        (item) => item['id'] == updatedRecord['id']
+      );
+      if (index != -1) {
+        // Update existing record
+        _suggestions[index] = {
+          ..._suggestions[index],
+          ...updatedRecord,
+        };
+      }
+    });
     }
-  }
 
   void _handleDelete(PostgresChangePayload payload) {
     final oldRecord = payload.oldRecord;
-    if (oldRecord != null) {
-      setState(() {
-        _suggestions.removeWhere((item) => item['id'] == oldRecord['id']);
-      });
+    setState(() {
+      _suggestions.removeWhere((item) => item['id'] == oldRecord['id']);
+    });
     }
-  }
 
   Future<void> _fetchNewSuggestionDetails(String suggestionId) async {
     try {
@@ -125,12 +119,10 @@ class RecommendedSuggestionsWidgetState extends State<RecommendedSuggestionsWidg
           .eq('id', suggestionId)
           .single();
 
-      if (response != null) {
-        setState(() {
-          _suggestions.insert(0, response); // Add to top
-        });
-      }
-    } catch (e) {
+      setState(() {
+        _suggestions.insert(0, response); // Add to top
+      });
+        } catch (e) {
       print('Error fetching new suggestion details: $e');
     }
   }
@@ -160,12 +152,10 @@ class RecommendedSuggestionsWidgetState extends State<RecommendedSuggestionsWidg
           .eq('user_id', widget.userId)
           .order('recommended_at', ascending: false);
 
-      if (response != null && response is List) {
-        setState(() {
-          _suggestions = List<Map<String, dynamic>>.from(response);
-        });
-      }
-    } catch (e) {
+      setState(() {
+        _suggestions = List<Map<String, dynamic>>.from(response);
+      });
+        } catch (e) {
       setState(() {
         _error = e.toString();
       });

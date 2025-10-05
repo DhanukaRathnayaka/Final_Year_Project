@@ -16,11 +16,13 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => HomeScreenState();
 }
 
-class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, RouteAware {
+class HomeScreenState extends State<HomeScreen>
+    with TickerProviderStateMixin, RouteAware {
   final _authService = AuthService();
 
   // Global key to access RecommendedSuggestionsWidget
-  final GlobalKey<RecommendedSuggestionsWidgetState> _suggestionsWidgetKey = GlobalKey<RecommendedSuggestionsWidgetState>();
+  final GlobalKey<RecommendedSuggestionsWidgetState> _suggestionsWidgetKey =
+      GlobalKey<RecommendedSuggestionsWidgetState>();
 
   // Animation controllers
   late AnimationController _fadeController;
@@ -29,7 +31,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
   late Animation<Offset> _slideAnimation;
 
   // Custom theme color
-  final Color _primaryColor = const Color(0xFF62ceb3);
+  final Color _primaryColor = const Color.fromARGB(255, 74, 146, 128);
   final Color _backgroundColor = const Color(0xFFf8fdfb);
   final Color _surfaceColor = const Color(0xFFffffff);
   final Color _onBackgroundColor = const Color(0xFF1a1a1a);
@@ -233,7 +235,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
             child: Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: 16.0,
-                vertical: 8.0,
+                vertical: 6.0,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -255,7 +257,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
                               ? const AssetImage('assets/images/guest.png')
                               : const AssetImage('assets/images/profile.jpg'),
                           child: widget.isGuest
-                              ? Icon(
+                              ? const Icon(
                                   Icons.person,
                                   color: Colors.white,
                                   size: 28,
@@ -278,7 +280,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
                           _formattedDate,
                           style: const TextStyle(
                             fontSize: 14,
-                            color: Colors.white,
+                            color: Color.fromARGB(255, 10, 10, 10),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -287,13 +289,13 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
                       // Notification Button
                       Container(
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: const Color.fromARGB(255, 14, 13, 13).withOpacity(0.2),
                           shape: BoxShape.circle,
                         ),
                         child: IconButton(
                           icon: const Icon(
                             LineIcons.bell,
-                            color: Colors.white,
+                            color: Color.fromARGB(255, 7, 7, 7),
                             size: 24,
                           ),
                           onPressed: widget.isGuest
@@ -312,19 +314,20 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
                     ],
                   ),
 
-                  const Spacer(),
+                  // instead of Spacer() ⛔ use small SizedBox
+                  const SizedBox(height: 11),
 
                   // Greeting Section
                   Padding(
-                    padding: const EdgeInsets.all(24.0),
+                    padding: const EdgeInsets.all(22.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           _userGreeting,
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 28,
+                            color: Color.fromARGB(255, 12, 11, 11),
+                            fontSize: 32,
                             fontWeight: FontWeight.bold,
                             shadows: [
                               Shadow(
@@ -341,7 +344,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
                               ? "Enjoy limited access as guest"
                               : "We hope you are doing great today",
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.9),
+                            color: const Color.fromARGB(255, 12, 12, 12).withOpacity(0.9),
                             fontSize: 16,
                             shadows: [
                               Shadow(
@@ -406,7 +409,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
             gradient: LinearGradient(
               colors: [
                 _primaryColor.withOpacity(0.1),
-                _primaryColor.withOpacity(0.05)
+                _primaryColor.withOpacity(0.05),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -450,19 +453,12 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
                       widget.isGuest
                           ? "Get personalized mental health support"
                           : "Your AI companion is ready to listen",
-                      style: TextStyle(
-                        fontSize: 14, 
-                        color: _primaryColor,
-                      ),
+                      style: TextStyle(fontSize: 14, color: _primaryColor),
                     ),
                   ],
                 ),
               ),
-              Icon(
-                Icons.arrow_forward_ios, 
-                color: _primaryColor, 
-                size: 20
-              ),
+              Icon(Icons.arrow_forward_ios, color: _primaryColor, size: 20),
             ],
           ),
         ),
@@ -486,11 +482,11 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
               ),
             ),
             Text(
-              widget.isGuest 
-                ? "Sign in to see personalized suggestions"
-                : "Based on your recent conversations",
+              widget.isGuest
+                  ? "Sign in to see personalized suggestions"
+                  : "Based on your recent conversations",
               style: TextStyle(
-                fontSize: 12, 
+                fontSize: 12,
                 color: _onSurfaceColor.withOpacity(0.6),
               ),
             ),
@@ -527,11 +523,18 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, color: _onSurfaceColor.withOpacity(0.4), size: 40),
+              Icon(
+                Icons.error_outline,
+                color: _onSurfaceColor.withOpacity(0.4),
+                size: 40,
+              ),
               const SizedBox(height: 8),
               Text(
                 'Unable to load recommendations',
-                style: TextStyle(color: _onSurfaceColor.withOpacity(0.6), fontSize: 14),
+                style: TextStyle(
+                  color: _onSurfaceColor.withOpacity(0.6),
+                  fontSize: 14,
+                ),
               ),
             ],
           ),
@@ -539,7 +542,10 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
       );
     }
 
-    return RecommendedSuggestionsWidget(key: _suggestionsWidgetKey, userId: userId);
+    return RecommendedSuggestionsWidget(
+      key: _suggestionsWidgetKey,
+      userId: userId,
+    );
   }
 
   Widget _buildGuestRecommendations() {
@@ -639,11 +645,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
                 ],
               ),
             ),
-            Icon(
-              Icons.lock,
-              size: 16,
-              color: _onSurfaceColor.withOpacity(0.4),
-            ),
+            Icon(Icons.lock, size: 16, color: _onSurfaceColor.withOpacity(0.4)),
           ],
         ),
       ),
@@ -694,10 +696,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, R
                 ),
                 content: Text(
                   'Please sign in to access all features and personalized content.',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: _onSurfaceColor,
-                  ),
+                  style: TextStyle(fontSize: 16, color: _onSurfaceColor),
                 ),
                 actions: [
                   TextButton(

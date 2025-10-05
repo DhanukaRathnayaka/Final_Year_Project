@@ -8,7 +8,7 @@ import 'package:safespace/authentication/auth_gate.dart';
 import 'package:safespace/authentication/login_page.dart';
 import 'package:safespace/services/mental_state_service.dart';
 
-// Custom theme color
+// Custom theme color passe maru krmuuuuuuuuuuuuuuuuuuuuu
 const Color primaryColor = Color(0xFF5CCCB4);
 
 MaterialColor createMaterialColor(Color color) {
@@ -33,7 +33,7 @@ MaterialColor createMaterialColor(Color color) {
 
 final MaterialColor primarySwatch = createMaterialColor(const Color.fromARGB(255, 110, 223, 200));
 
-// Add this to your main.dart or create a service locators
+// service locators
 MentalStateService mentalStateService = MentalStateService();
 
 // Global RouteObserver for navigation tracking

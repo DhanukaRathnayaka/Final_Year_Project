@@ -31,6 +31,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/images/bg2.jpg
     - assets/images/day_bg.jpg
     - assets/images/night_bg.jpg
     - assets/images/profile.jpg

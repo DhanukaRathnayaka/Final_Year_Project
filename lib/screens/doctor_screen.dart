@@ -301,7 +301,6 @@ class _DoctorScreenState extends State<DoctorScreen>
     final email = doctor['email'] ?? 'N/A';
     final phone = doctor['phone'] ?? 'N/A';
     final category = doctor['category'] ?? 'General';
-    final dominantState = doctor['dominant_state'] ?? 'General';
 
     return FadeTransition(
       opacity: _fadeAnimation,
