@@ -4,6 +4,7 @@ import 'package:line_icons/line_icons.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:safespace/authentication/auth_service.dart';
+import 'package:supabase/supabase.dart' as supabase;
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -21,6 +22,7 @@ class _ProfilePageState extends State<ProfilePage>
   bool _isUpdating = false;
   String? _avatarUrl;
   final ImagePicker _picker = ImagePicker();
+  bool _hideEmail = false;
 
   // Animation controllers
   late AnimationController _fadeController;
@@ -67,6 +69,7 @@ class _ProfilePageState extends State<ProfilePage>
     try {
       _userMetadata = _authService.getCurrentUserMetadata();
       _avatarUrl = _userMetadata?['avatar_url'];
+      _hideEmail = _userMetadata?['hide_email'] ?? false;
 
       // Start animations
       _fadeController.forward();
@@ -95,27 +98,42 @@ class _ProfilePageState extends State<ProfilePage>
 
       // Upload to Supabase Storage
       final userId = _authService.getCurrentUserId();
-      final fileExtension = image.name.split('.').last;
-      final filePath = 'profile_pictures/$userId/profile.$fileExtension';
+      final fileExtension = image.name.split('.').last.toLowerCase();
+      final fileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
+      final filePath = 'user_avatars/$userId/$fileName';
 
-      await _supabase.storage
-          .from('avatars')
-          .upload(filePath, (await image.readAsBytes()) as File);
+      final bytes = await image.readAsBytes();
+      final contentType = 'image/$fileExtension';
+
+      // Upload with upsert option
+      await _supabase.storage.from('avatars').uploadBinary(
+        filePath,
+        bytes,
+        fileOptions: supabase.FileOptions(
+          contentType: contentType,
+          upsert: true,
+        ),
+      );
 
       // Get public URL
       final imageUrl = _supabase.storage.from('avatars').getPublicUrl(filePath);
 
       // Update user metadata
+      final updatedMetadata = {...?_userMetadata, 'avatar_url': imageUrl};
       await _supabase.auth.updateUser(
-        UserAttributes(data: {...?_userMetadata, 'avatar_url': imageUrl}),
+        UserAttributes(data: updatedMetadata),
       );
 
-      // Refresh UI
-      await _loadUserData();
+      // Update local state immediately
+      setState(() {
+        _userMetadata = updatedMetadata;
+        _avatarUrl = imageUrl;
+      });
 
       _showSuccessSnackBar('Profile picture updated successfully!');
     } catch (e) {
-      _showErrorSnackBar('Error updating profile picture: $e');
+      print('Profile picture upload error: $e');
+      _showErrorSnackBar('Error updating profile picture: ${e.toString()}');
     } finally {
       setState(() => _isUpdating = false);
     }
@@ -127,6 +145,121 @@ class _ProfilePageState extends State<ProfilePage>
     } catch (e) {
       _showErrorSnackBar('Error signing out: $e');
     }
+  }
+
+  Future<void> _showEditProfileDialog() async {
+    final TextEditingController nameController = TextEditingController(text: _userMetadata?['username'] ?? '');
+    bool tempHideEmail = _hideEmail;
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.edit, color: Theme.of(context).primaryColor),
+                  SizedBox(width: 8),
+                  Text('Edit Profile'),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Display Name',
+                        hintText: 'Enter your display name',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        prefixIcon: Icon(Icons.person),
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    SwitchListTile(
+                      title: Text('Hide Email'),
+                      subtitle: Text('Hide your email from public view'),
+                      value: tempHideEmail,
+                      onChanged: (value) {
+                        setState(() {
+                          tempHideEmail = value;
+                        });
+                      },
+                      activeColor: Theme.of(context).primaryColor,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final newName = nameController.text.trim();
+                    if (newName.isEmpty) {
+                      _showErrorSnackBar('Name cannot be empty');
+                      return;
+                    }
+
+                    try {
+                      setState(() => _isUpdating = true);
+                      Navigator.of(context).pop();
+
+                      // Update user metadata
+                      await _supabase.auth.updateUser(
+                        UserAttributes(data: {
+                          ...?_userMetadata,
+                          'username': newName,
+                          'hide_email': tempHideEmail,
+                        }),
+                      );
+
+                      // Update local state
+                      setState(() {
+                        _userMetadata = {
+                          ...?_userMetadata,
+                          'username': newName,
+                          'hide_email': tempHideEmail,
+                        };
+                        _hideEmail = tempHideEmail;
+                      });
+
+                      _showSuccessSnackBar('Profile updated successfully!');
+                    } catch (e) {
+                      _showErrorSnackBar('Error updating profile: $e');
+                    } finally {
+                      setState(() => _isUpdating = false);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _maskEmail(String email) {
+    if (email == 'No email' || !email.contains('@')) return email;
+    final parts = email.split('@');
+    final username = parts[0];
+    final domain = parts[1];
+    final maskedUsername = username.length > 2
+        ? '${username.substring(0, 2)}${'*' * (username.length - 2)}'
+        : username;
+    return '$maskedUsername@$domain';
   }
 
   void _showErrorSnackBar(String message) {
@@ -167,6 +300,7 @@ class _ProfilePageState extends State<ProfilePage>
   Widget build(BuildContext context) {
     final username = _userMetadata?['username'] ?? 'User';
     final email = _authService.getCurrentUserEmail() ?? 'No email';
+    final displayEmail = _hideEmail ? _maskEmail(email) : email;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -199,16 +333,6 @@ class _ProfilePageState extends State<ProfilePage>
         ),
         backgroundColor: Colors.white,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.settings, color: Theme.of(context).primaryColor),
-            onPressed: () {
-              // TODO: Navigate to settings
-              _showSuccessSnackBar('Settings coming soon!');
-            },
-            tooltip: 'Settings',
-          ),
-        ],
       ),
       body: _isLoading
           ? _buildLoadingState()
@@ -220,11 +344,11 @@ class _ProfilePageState extends State<ProfilePage>
                   padding: EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      _buildProfileHeader(username, email),
+                      _buildProfileHeader(username, displayEmail),
                       SizedBox(height: 24),
                       _buildProfileActions(),
                       SizedBox(height: 24),
-                      _buildAccountInfo(username, email),
+                      _buildAccountInfo(username, displayEmail),
                       SizedBox(height: 24),
                       _buildSignOutButton(),
                     ],
@@ -262,7 +386,7 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
-  Widget _buildProfileHeader(String username, String email) {
+  Widget _buildProfileHeader(String username, String displayEmail) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -359,7 +483,7 @@ class _ProfilePageState extends State<ProfilePage>
                 ),
                 SizedBox(height: 4),
                 Text(
-                  email,
+                  displayEmail,
                   style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                 ),
               ],
@@ -390,9 +514,7 @@ class _ProfilePageState extends State<ProfilePage>
             title: 'Edit Profile',
             subtitle: 'Update your personal information',
             color: Colors.blue[600]!,
-            onTap: () {
-              _showSuccessSnackBar('Edit profile coming soon!');
-            },
+            onTap: _showEditProfileDialog,
           ),
           Divider(height: 1, indent: 56),
           _buildActionTile(
@@ -453,6 +575,7 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Widget _buildAccountInfo(String username, String email) {
+    final displayEmail = _hideEmail ? _maskEmail(email) : email;
     return Container(
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -486,7 +609,7 @@ class _ProfilePageState extends State<ProfilePage>
           SizedBox(height: 16),
           _buildInfoRow('Username', username),
           SizedBox(height: 12),
-          _buildInfoRow('Email', email),
+          _buildInfoRow('Email', displayEmail),
           SizedBox(height: 12),
           _buildInfoRow('Member Since', '2024'),
           SizedBox(height: 16),

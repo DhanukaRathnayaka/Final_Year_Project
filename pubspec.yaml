@@ -15,8 +15,8 @@ dependencies:
   google_nav_bar: ^5.0.7
   flutter_markdown: ^0.7.7+1
   http: ^1.4.0
-  supabase_flutter: ^2.9.1
-  image_picker: ^1.1.2
+  supabase_flutter: ^2.10.2
+  image_picker: ^1.2.0
   audio_video_progress_bar: ^1.0.1
   shared_preferences: ^2.5.3
   just_audio: ^0.9.42

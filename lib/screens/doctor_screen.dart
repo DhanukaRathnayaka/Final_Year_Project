@@ -461,14 +461,14 @@ class _DoctorScreenState extends State<DoctorScreen>
                               Expanded(
                                 child: OutlinedButton.icon(
                                   onPressed: () =>
-                                      _contactDoctor('phone', phone),
+                                      _contactDoctor('meet', phone),
                                   icon: Icon(
-                                    Icons.phone,
+                                    Icons.video_call,
                                     size: 20,
                                     color: Theme.of(context).primaryColor,
                                   ),
                                   label: Text(
-                                    'Call',
+                                    'Schedule Meeting',
                                     style: TextStyle(color: Theme.of(context).primaryColor.withOpacity(0.8)),
                                   ),
                                   style: OutlinedButton.styleFrom(
@@ -630,30 +630,34 @@ class _DoctorScreenState extends State<DoctorScreen>
       return;
     }
 
-    final Uri uri = method == 'email'
-        ? Uri.parse('mailto:$contact')
-        : Uri.parse('tel:$contact');
+    final Uri uri;
+    if (method == 'email') {
+      uri = Uri.parse('mailto:$contact');
+    } else if (method == 'meet') {
+      uri = Uri.parse('https://meet.google.com');
+    } else {
+      uri = Uri.parse('tel:$contact');
+    }
 
     try {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri);
       } else {
-        // Fallback to copying to clipboard
-        await Clipboard.setData(ClipboardData(text: contact));
+        // Fallback message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
                 Icon(
-                  method == 'email' ? Icons.email : Icons.phone,
+                  method == 'email' ? Icons.email : Icons.video_call,
                   color: Colors.white,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     method == 'email'
-                        ? 'Email copied to clipboard (email app not available)'
-                        : 'Phone number copied to clipboard (phone app not available)',
+                        ? 'Unable to open email app'
+                        : 'Unable to open Google Meet',
                   ),
                 ),
               ],
@@ -669,22 +673,21 @@ class _DoctorScreenState extends State<DoctorScreen>
         );
       }
     } catch (e) {
-      // Fallback to copying to clipboard
-      await Clipboard.setData(ClipboardData(text: contact));
+      // Fallback message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
             children: [
               Icon(
-                method == 'email' ? Icons.email : Icons.phone,
+                method == 'email' ? Icons.email : Icons.video_call,
                 color: Colors.white,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   method == 'email'
-                      ? 'Email copied to clipboard'
-                      : 'Phone number copied to clipboard',
+                      ? 'Unable to open email app'
+                      : 'Unable to open Google Meet',
                 ),
               ),
             ],
