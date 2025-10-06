@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class DoctorScreen extends StatefulWidget {
   @override
@@ -301,6 +302,7 @@ class _DoctorScreenState extends State<DoctorScreen>
     final email = doctor['email'] ?? 'N/A';
     final phone = doctor['phone'] ?? 'N/A';
     final category = doctor['category'] ?? 'General';
+    final profilePicture = doctor['profilepicture'];
 
     return FadeTransition(
       opacity: _fadeAnimation,
@@ -344,10 +346,8 @@ class _DoctorScreenState extends State<DoctorScreen>
                       child: Column(
                         children: [
                           Container(
-                            padding: EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white,
                               boxShadow: [
                                 BoxShadow(
                                   color: Theme.of(context).primaryColor.withOpacity(0.2),
@@ -356,10 +356,19 @@ class _DoctorScreenState extends State<DoctorScreen>
                                 ),
                               ],
                             ),
-                            child: Icon(
-                              Icons.medical_services,
-                              size: 50,
-                              color: Theme.of(context).primaryColor,
+                            child: CircleAvatar(
+                              radius: 35,
+                              backgroundColor: Colors.white,
+                              backgroundImage: profilePicture != null && profilePicture.isNotEmpty
+                                  ? NetworkImage(profilePicture)
+                                  : null,
+                              child: profilePicture == null || profilePicture.isEmpty
+                                  ? Icon(
+                                      Icons.medical_services,
+                                      size: 50,
+                                      color: Theme.of(context).primaryColor,
+                                    )
+                                  : null,
                             ),
                           ),
                           SizedBox(height: 16),
@@ -606,7 +615,7 @@ class _DoctorScreenState extends State<DoctorScreen>
     );
   }
 
-  void _contactDoctor(String method, String contact) {
+  void _contactDoctor(String method, String contact) async {
     if (contact == 'N/A') {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -621,76 +630,74 @@ class _DoctorScreenState extends State<DoctorScreen>
       return;
     }
 
-    // Show a confirmation dialog for calm UX before taking action
-    showDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext ctx) {
-        return AlertDialog(
-          title: Row(
+    final Uri uri = method == 'email'
+        ? Uri.parse('mailto:$contact')
+        : Uri.parse('tel:$contact');
+
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else {
+        // Fallback to copying to clipboard
+        await Clipboard.setData(ClipboardData(text: contact));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(
+                  method == 'email' ? Icons.email : Icons.phone,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    method == 'email'
+                        ? 'Email copied to clipboard (email app not available)'
+                        : 'Phone number copied to clipboard (phone app not available)',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: method == 'email'
+                ? Colors.blue[600]
+                : Colors.green[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      // Fallback to copying to clipboard
+      await Clipboard.setData(ClipboardData(text: contact));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
             children: [
               Icon(
                 method == 'email' ? Icons.email : Icons.phone,
-                color: method == 'email' ? Colors.blue[600] : Colors.green[600],
+                color: Colors.white,
               ),
               const SizedBox(width: 8),
-              Text(method == 'email' ? 'Contact by Email' : 'Contact by Phone'),
+              Expanded(
+                child: Text(
+                  method == 'email'
+                      ? 'Email copied to clipboard'
+                      : 'Phone number copied to clipboard',
+                ),
+              ),
             ],
           ),
-          content: Text(
-            method == 'email'
-                ? 'Would you like to copy the email address to clipboard?'
-                : 'Would you like to copy the phone number to clipboard?',
-            style: const TextStyle(height: 1.4),
+          backgroundColor: method == 'email'
+              ? Colors.blue[600]
+              : Colors.green[600],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
           ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () => Navigator.of(ctx).pop(),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: method == 'email'
-                    ? Colors.blue[600]
-                    : Colors.green[600],
-              ),
-              child: const Text('Copy'),
-              onPressed: () async {
-                // Copy raw contact to clipboard
-                await Clipboard.setData(ClipboardData(text: contact));
-                Navigator.of(ctx).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Row(
-                      children: [
-                        Icon(
-                          method == 'email' ? Icons.email : Icons.phone,
-                          color: Colors.white,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            method == 'email'
-                                ? 'Email copied to clipboard'
-                                : 'Phone number copied to clipboard',
-                          ),
-                        ),
-                      ],
-                    ),
-                    backgroundColor: method == 'email'
-                        ? Colors.blue[600]
-                        : Colors.green[600],
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
-        );
-      },
-    );
+        ),
+      );
+    }
   }
 }

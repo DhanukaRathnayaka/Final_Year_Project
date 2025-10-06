@@ -15,7 +15,10 @@ class DoctorRecommendationService {
 
     final response = await http.post(
       Uri.parse(backendUrl),
-      headers: {"Content-Type": "application/json"},
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer ${user.id}",
+      },
       body: jsonEncode({"user_id": user.id}),
     );
 

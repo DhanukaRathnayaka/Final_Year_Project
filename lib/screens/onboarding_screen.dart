@@ -54,13 +54,15 @@ class OnboardingScreen extends StatelessWidget {
             // Main onboarding content
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 0),
                 child: IntroScreenOnboarding(
                   introductionList: list,
                   onTapSkipButton: () {
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+                      MaterialPageRoute(
+                        builder: (context) => const WelcomeScreen(),
+                      ),
                     );
                   },
                   backgroudColor: colorScheme.surface,
@@ -74,13 +76,15 @@ class OnboardingScreen extends StatelessWidget {
             ),
 
             // Custom skip text button at bottom
-            Padding(
-              padding: const EdgeInsets.only(bottom: 20.0),
+            Container(
+              padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 8.0),
               child: TextButton(
                 onPressed: () {
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => const WelcomeScreen(),
+                    ),
                   );
                 },
                 child: Text(
