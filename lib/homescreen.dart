@@ -254,7 +254,7 @@ class HomeScreenState extends State<HomeScreen>
                           radius: 24,
                           backgroundColor: Colors.white.withOpacity(0.2),
                           backgroundImage: widget.isGuest
-                              ? const AssetImage('assets/images/guest.png')
+                              ? null
                               : const AssetImage('assets/images/profile.jpg'),
                           child: widget.isGuest
                               ? const Icon(

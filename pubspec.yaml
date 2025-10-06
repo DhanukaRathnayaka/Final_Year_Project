@@ -22,8 +22,8 @@ dependencies:
   just_audio: ^0.9.42
   video_player: ^2.8.5
   chewie: ^1.7.1
-  intro_screen_onboarding_flutter: ^1.0.0
-  url_launcher: ^6.3.1
+  icons_plus: ^4.0.0
+  font_awesome_flutter: ^10.9.1
 
 dev_dependencies:
   flutter_test:
@@ -33,7 +33,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/images/bg2.jpg
+    - assets/images/
+    - assets/images/bg1.png
+    - assets/images/bg1.jpg
     - assets/images/day_bg.jpg
     - assets/images/night_bg.jpg
     - assets/images/profile.jpg
