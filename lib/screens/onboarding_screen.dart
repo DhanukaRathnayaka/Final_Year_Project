@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:intro_screen_onboarding_flutter/introduction.dart';
-import 'package:intro_screen_onboarding_flutter/introscreenonboarding.dart';
 import 'package:safespace/authentication/welcome.dart';
+import 'package:introduction_screen/introduction_screen.dart';
 
 class OnboardingScreen extends StatelessWidget {
   const OnboardingScreen({super.key});
@@ -10,38 +9,40 @@ class OnboardingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    final List<Introduction> list = [
-      Introduction(
+    final List<PageViewModel> list = [
+      PageViewModel(
         title: 'Welcome to SafeSpace',
-        subTitle:
+        body:
             'A supportive space to care for your mental health with AI guidance.',
-        imageUrl: 'assets/images/welcome.png',
-        imageHeight: 250,
-        titleTextStyle: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-          color: colorScheme.tertiary,
-        ),
-        subTitleTextStyle: TextStyle(
-          fontSize: 16,
-          color: colorScheme.onSurface.withOpacity(0.7),
+        image: Image.asset('assets/images/welcome.png', height: 250),
+        decoration: PageDecoration(
+          titleTextStyle: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: colorScheme.tertiary,
+          ),
+          bodyTextStyle: TextStyle(
+            fontSize: 16,
+            color: colorScheme.onSurface.withOpacity(0.7),
+          ),
         ),
       ),
-      Introduction(
+      PageViewModel(
         title: 'Your Mental Wellness, All in One Place',
-        subTitle:
-            'Everything you need to support your mental health journey', // Main subheading
+        body:
+            'Everything you need to support your mental health journey',
 
-        imageUrl: 'assets/images/welcome.png',
-        imageHeight: 250,
-        titleTextStyle: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-          color: colorScheme.tertiary,
-        ),
-        subTitleTextStyle: TextStyle(
-          fontSize: 16,
-          color: colorScheme.onSurface.withOpacity(0.7),
+        image: Image.asset('assets/images/welcome.png', height: 250),
+        decoration: PageDecoration(
+          titleTextStyle: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: colorScheme.tertiary,
+          ),
+          bodyTextStyle: TextStyle(
+            fontSize: 16,
+            color: colorScheme.onSurface.withOpacity(0.7),
+          ),
         ),
       ),
     ];
@@ -55,9 +56,9 @@ class OnboardingScreen extends StatelessWidget {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 0),
-                child: IntroScreenOnboarding(
-                  introductionList: list,
-                  onTapSkipButton: () {
+                child: IntroductionScreen(
+                  pages: list,
+                  onDone: () {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
@@ -65,12 +66,13 @@ class OnboardingScreen extends StatelessWidget {
                       ),
                     );
                   },
-                  backgroudColor: colorScheme.surface,
-                  foregroundColor: colorScheme.primary,
-                  skipTextStyle: const TextStyle(
-                    fontSize: 0, // Hides the built-in skip button
+                  showSkipButton: false,
+                  showNextButton: false,
+                  showDoneButton: false,
+                  globalBackgroundColor: colorScheme.surface,
+                  dotsDecorator: DotsDecorator(
+                    activeColor: colorScheme.primary,
                   ),
-                  // Removed unsupported footerBuilder parameter
                 ),
               ),
             ),
