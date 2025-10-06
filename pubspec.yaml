@@ -22,6 +22,7 @@ dependencies:
   just_audio: ^0.9.42
   video_player: ^2.8.5
   chewie: ^1.7.1
+  intro_screen_onboarding_flutter: ^1.0.0
 
 dev_dependencies:
   flutter_test:
@@ -35,3 +36,4 @@ flutter:
     - assets/images/day_bg.jpg
     - assets/images/night_bg.jpg
     - assets/images/profile.jpg
+    - assets/images/welcome.png

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:safespace/navmanager.dart';
-import 'package:safespace/authentication/welcome.dart';
+import 'package:safespace/screens/onboarding_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 
@@ -26,8 +26,8 @@ class AuthGate extends StatelessWidget {
           // User is logged in - go to home
           return const NavManager(isGuest: false);
         } else {
-          // User not logged in - go to welcome screen
-          return const WelcomeScreen();
+          // User not logged in - go to onboarding screen
+          return const OnboardingScreen();
         }
       },
     );
