@@ -3,8 +3,8 @@ import '../config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DoctorScreen extends StatefulWidget {
   @override
@@ -14,9 +14,11 @@ class DoctorScreen extends StatefulWidget {
 class _DoctorScreenState extends State<DoctorScreen>
     with TickerProviderStateMixin {
   Map<String, dynamic>? assignedDoctor;
+  List<Map<String, dynamic>> allDoctors = [];
   bool isLoading = true;
   bool isRefreshing = false;
   String errorMessage = '';
+  Set<String> requestedAppointments = {};
 
   // Animation controllers
   late AnimationController _fadeController;
@@ -29,7 +31,11 @@ class _DoctorScreenState extends State<DoctorScreen>
     super.initState();
     _initializeAnimations();
     // Add a small delay to ensure Supabase is initialized
-    Future.delayed(Duration(milliseconds: 500), _fetchDoctor);
+    Future.delayed(Duration(milliseconds: 500), () {
+      _fetchDoctor();
+      _fetchAllDoctors();
+      _fetchPendingAppointments();
+    });
   }
 
   void _initializeAnimations() {
@@ -100,8 +106,6 @@ class _DoctorScreenState extends State<DoctorScreen>
                 data["error"] ??
                 "No doctor assigned yet. This could be because your mental state assessment is pending or no matching doctor is available.";
           }
-          isLoading = false;
-          isRefreshing = false;
         });
 
         // Start animations if we have a doctor
@@ -114,8 +118,6 @@ class _DoctorScreenState extends State<DoctorScreen>
           assignedDoctor = null;
           errorMessage =
               "Failed to fetch doctor information (${response.statusCode}). Please check your internet connection and try again.";
-          isLoading = false;
-          isRefreshing = false;
         });
       }
     } catch (e) {
@@ -123,10 +125,143 @@ class _DoctorScreenState extends State<DoctorScreen>
         assignedDoctor = null;
         errorMessage =
             "Connection error. Could not connect to the server. Please check your internet connection and try again.";
+      });
+    }
+  }
+
+  Future<void> _fetchAllDoctors() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
+
+      // Fetch all doctors from Supabase
+      final response = await Supabase.instance.client
+          .from('doctors')
+          .select('*')
+          .order('name');
+
+      if (response.isNotEmpty) {
+        // Filter out doctors with invalid IDs (non-integer or null)
+        final validDoctors = response.where((doctor) {
+          final id = doctor['id'];
+          final isValid = id != null && id is int;
+          if (!isValid) {
+            print('Found doctor with invalid ID: $id'); // Debug log
+          }
+          return isValid;
+        }).toList();
+        
+        setState(() {
+          allDoctors = List<Map<String, dynamic>>.from(validDoctors);
+        });
+      }
+    } catch (e) {
+      print('Error fetching all doctors: $e');
+    } finally {
+      setState(() {
         isLoading = false;
         isRefreshing = false;
       });
     }
+  }
+
+  Future<void> _fetchPendingAppointments() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
+
+      // Fetch user's pending appointments
+      final response = await Supabase.instance.client
+          .from('pending_appointments')
+          .select('doctor_id')
+          .eq('user_id', user.id)
+          .eq('status', 'pending');
+
+      if (response.isNotEmpty) {
+        setState(() {
+          requestedAppointments = Set<String>.from(
+            response.map((appointment) => (appointment['doctor_id'] ?? '').toString()),
+          ).where((id) => id.isNotEmpty).toSet();
+        });
+      }
+    } catch (e) {
+      print('Error fetching pending appointments: $e');
+    }
+  }
+
+  Future<void> _requestAppointment(String doctorId, String doctorName) async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Please log in to request an appointment'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Validate doctor ID format
+      final doctorIdInt = int.tryParse(doctorId);
+      if (doctorIdInt == null) {
+        print('Invalid integer ID format: $doctorId'); // Debug log
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Invalid doctor ID format. Please contact support.'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+        return;
+      }
+
+      // Insert into pending_appointments table
+      await Supabase.instance.client
+          .from('pending_appointments')
+          .insert({
+        'user_id': user.id,
+        'doctor_id': doctorId,
+        'status': 'pending',
+        'requested_at': DateTime.now().toIso8601String(),
+      });
+
+      setState(() {
+        requestedAppointments.add(doctorId);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Appointment requested with Dr. $doctorName'),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } catch (e) {
+      print('Error requesting appointment: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to request appointment. Please try again.'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _refreshData() async {
+    await _fetchDoctor();
+    await _fetchAllDoctors();
+    await _fetchPendingAppointments();
   }
 
   @override
@@ -180,16 +315,16 @@ class _DoctorScreenState extends State<DoctorScreen>
                     ),
                   )
                 : Icon(Icons.refresh, color: Theme.of(context).primaryColor),
-            onPressed: isRefreshing ? null : _fetchDoctor,
+            onPressed: isRefreshing ? null : _refreshData,
             tooltip: 'Refresh doctor info',
           ),
         ],
       ),
       body: isLoading
           ? _buildLoadingState()
-          : errorMessage.isNotEmpty
+          : errorMessage.isNotEmpty && assignedDoctor == null
           ? _buildErrorState()
-          : _buildDoctorInfo(),
+          : _buildDoctorContent(),
     );
   }
 
@@ -264,7 +399,7 @@ class _DoctorScreenState extends State<DoctorScreen>
             ),
             SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: _fetchDoctor,
+              onPressed: _refreshData,
               icon: Icon(Icons.refresh),
               label: Text('Try Again'),
               style: ElevatedButton.styleFrom(
@@ -276,293 +411,175 @@ class _DoctorScreenState extends State<DoctorScreen>
                 ),
               ),
             ),
-            SizedBox(height: 16),
-            TextButton.icon(
-              onPressed: () {
-                // Navigate to chatbot to start conversation
-                Navigator.pushNamed(context, '/chatbot');
-              },
-              icon: Icon(Icons.chat_bubble_outline),
-              label: Text('Start Conversation'),
-              style: TextButton.styleFrom(foregroundColor: Theme.of(context).primaryColor),
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildDoctorInfo() {
-    if (assignedDoctor == null) {
-      return _buildErrorState();
-    }
+  Widget _buildDoctorContent() {
+    return Column(
+      children: [
+        // Recommended Doctor Section
+        if (assignedDoctor != null) ...[
+          _buildRecommendedDoctor(),
+          Divider(height: 1, color: Colors.grey[300]),
+        ],
+        
+        // All Doctors Section
+        Expanded(
+          child: _buildAllDoctors(),
+        ),
+      ],
+    );
+  }
 
+  Widget _buildRecommendedDoctor() {
     final doctor = assignedDoctor!;
     final name = doctor['name'] ?? 'Dr. Unknown';
-    final email = doctor['email'] ?? 'N/A';
-    final phone = doctor['phone'] ?? 'N/A';
     final category = doctor['category'] ?? 'General';
     final profilePicture = doctor['profilepicture'];
+    final doctorId = doctor['id'].toString();
+    final hasRequested = requestedAppointments.contains(doctorId);
 
     return FadeTransition(
       opacity: _fadeAnimation,
       child: SlideTransition(
         position: _slideAnimation,
-        child: SingleChildScrollView(
+        child: Container(
           padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(
+              bottom: BorderSide(color: Colors.grey[200]!),
+            ),
+          ),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Doctor Profile Card
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
+              Row(
+                children: [
+                  Icon(Icons.star, color: Colors.amber, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'Recommended Doctor',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[900],
                     ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    // Header with avatar
-                    Container(
-                      padding: EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Theme.of(context).primaryColor.withOpacity(0.1),
-                            Theme.of(context).primaryColor.withOpacity(0.05),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(20),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Theme.of(context).primaryColor.withOpacity(0.2),
-                                  blurRadius: 12,
-                                  spreadRadius: 2,
-                                ),
-                              ],
-                            ),
-                            child: CircleAvatar(
-                              radius: 35,
-                              backgroundColor: Colors.white,
-                              backgroundImage: profilePicture != null && profilePicture.isNotEmpty
-                                  ? NetworkImage(profilePicture)
-                                  : null,
-                              child: profilePicture == null || profilePicture.isEmpty
-                                  ? Icon(
-                                      Icons.medical_services,
-                                      size: 50,
-                                      color: Theme.of(context).primaryColor,
-                                    )
-                                  : null,
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            name,
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[900],
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            category,
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).primaryColor,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Text(
-                              'Mental Health Specialist',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Contact Information
-                    Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Column(
-                        children: [
-                          _buildContactItem(
-                            icon: Icons.email_outlined,
-                            title: 'Email',
-                            value: email,
-                            color: Theme.of(context).primaryColor,
-                          ),
-                          SizedBox(height: 16),
-                          _buildContactItem(
-                            icon: Icons.phone_outlined,
-                            title: 'Phone',
-                            value: phone,
-                            color: Theme.of(context).primaryColor,
-                          ),
-                          SizedBox(height: 24),
-
-                          // Action Buttons
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: () =>
-                                      _contactDoctor('email', email),
-                                  icon: Icon(
-                                    Icons.email,
-                                    size: 20,
-                                    color: Theme.of(context).primaryColor,
-                                  ),
-                                  label: Text(
-                                    'Send Email',
-                                    style: TextStyle(color: Theme.of(context).primaryColor.withOpacity(0.8)),
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    padding: EdgeInsets.symmetric(vertical: 12),
-                                    side: BorderSide(color: Theme.of(context).primaryColor.withOpacity(0.5)),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(25),
-                                    ),
-                                    backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: () =>
-                                      _contactDoctor('meet', phone),
-                                  icon: Icon(
-                                    Icons.video_call,
-                                    size: 20,
-                                    color: Theme.of(context).primaryColor,
-                                  ),
-                                  label: Text(
-                                    'Schedule Meeting',
-                                    style: TextStyle(color: Theme.of(context).primaryColor.withOpacity(0.8)),
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    padding: EdgeInsets.symmetric(vertical: 12),
-                                    side: BorderSide(color: Theme.of(context).primaryColor.withOpacity(0.5)),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(25),
-                                    ),
-                                    backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-
-              SizedBox(height: 24),
-
-              // Additional Information
-              Container(
-                padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
+              SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Theme.of(context).primaryColor.withOpacity(0.2),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                    child: CircleAvatar(
+                      radius: 30,
+                      backgroundColor: Colors.white,
+                      backgroundImage: profilePicture != null && profilePicture.isNotEmpty
+                          ? NetworkImage(profilePicture)
+                          : null,
+                      child: profilePicture == null || profilePicture.isEmpty
+                          ? Icon(
+                              Icons.medical_services,
+                              size: 30,
+                              color: Theme.of(context).primaryColor,
+                            )
+                          : null,
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.info_outline, color: Colors.red[600]),
-                        SizedBox(width: 8),
                         Text(
-                          'About Your Doctor',
+                          name,
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Colors.grey[900],
                           ),
                         ),
+                        SizedBox(height: 4),
+                        Text(
+                          category,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Theme.of(context).primaryColor.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Text(
+                            'Best Match for You',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).primaryColor,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                    SizedBox(height: 12),
-                    Text(
-                      'Dr. $name is a qualified mental health professional. They have been carefully matched to your needs based on your mental state assessment.',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                        height: 1.5,
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    Container(
-                      padding: EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Theme.of(context).primaryColor.withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.lightbulb_outline,
-                            color: Theme.of(context).primaryColor,
-                            size: 20,
-                          ),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Feel free to reach out anytime. Your doctor is here to support your mental health journey.',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Theme.of(context).primaryColor.withOpacity(0.8),
-                                fontStyle: FontStyle.italic,
+                  ),
+                ],
+              ),
+              SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: hasRequested
+                        ? OutlinedButton.icon(
+                            onPressed: null,
+                            icon: Icon(Icons.check_circle, size: 20),
+                            label: Text('Appointment Requested'),
+                            style: OutlinedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              side: BorderSide(color: Colors.green),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                            ),
+                          )
+                        : ElevatedButton.icon(
+                            onPressed: () => _requestAppointment(doctorId, name),
+                            icon: Icon(Icons.calendar_today, size: 20),
+                            label: Text('Request Appointment'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(context).primaryColor,
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -571,11 +588,329 @@ class _DoctorScreenState extends State<DoctorScreen>
     );
   }
 
-  Widget _buildContactItem({
+  Widget _buildAllDoctors() {
+    return Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.people_outline, color: Colors.grey[700], size: 20),
+              SizedBox(width: 8),
+              Text(
+                'All Available Doctors',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[900],
+                ),
+              ),
+              Spacer(),
+              Text(
+                '${allDoctors.length} doctors',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: allDoctors.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.medical_services_outlined,
+                        size: 64,
+                        color: Colors.grey[400],
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'No doctors available',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: EdgeInsets.only(bottom: 16),
+                  itemCount: allDoctors.length,
+                  itemBuilder: (context, index) {
+                    final doctor = allDoctors[index];
+                    final name = doctor['name'] ?? 'Dr. Unknown';
+                    final category = doctor['category'] ?? 'General';
+                    final profilePicture = doctor['profilepicture'];
+                    final doctorId = doctor['id'].toString();
+                    final isRecommended = assignedDoctor != null && 
+                        assignedDoctor!['id'] == doctor['id'];
+                    final hasRequested = requestedAppointments.contains(doctorId);
+
+                    return Container(
+                      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 6,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                        border: isRecommended
+                            ? Border.all(
+                                color: Theme.of(context).primaryColor.withOpacity(0.3),
+                                width: 2,
+                              )
+                            : null,
+                      ),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          radius: 25,
+                          backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                          backgroundImage: profilePicture != null && profilePicture.isNotEmpty
+                              ? NetworkImage(profilePicture)
+                              : null,
+                          child: profilePicture == null || profilePicture.isEmpty
+                              ? Icon(
+                                  Icons.medical_services,
+                                  color: Theme.of(context).primaryColor,
+                                )
+                              : null,
+                        ),
+                        title: Text(
+                          name,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[900],
+                          ),
+                        ),
+                        subtitle: Text(
+                          category,
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        trailing: hasRequested
+                            ? Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.green),
+                                ),
+                                child: Text(
+                                  'Requested',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green[800],
+                                  ),
+                                ),
+                              )
+                            : isRecommended
+                                ? Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.amber),
+                                    ),
+                                    child: Text(
+                                      'Your Doctor',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.amber[800],
+                                      ),
+                                    ),
+                                  )
+                                : Icon(
+                                    Icons.arrow_forward_ios,
+                                    size: 16,
+                                    color: Colors.grey[400],
+                                  ),
+                        onTap: () {
+                          _showDoctorDetails(doctor);
+                        },
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  void _showDoctorDetails(Map<String, dynamic> doctor) {
+    final name = doctor['name'] ?? 'Dr. Unknown';
+    final category = doctor['category'] ?? 'General';
+    final email = doctor['email'] ?? 'N/A';
+    final phone = doctor['phone'] ?? 'N/A';
+    final profilePicture = doctor['profilepicture'];
+    final doctorId = doctor['id'].toString();
+    final hasRequested = requestedAppointments.contains(doctorId);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.8,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+        ),
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Theme.of(context).primaryColor.withOpacity(0.1),
+                    Theme.of(context).primaryColor.withOpacity(0.05),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+              ),
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 40,
+                    backgroundColor: Colors.white,
+                    backgroundImage: profilePicture != null && profilePicture.isNotEmpty
+                        ? NetworkImage(profilePicture)
+                        : null,
+                    child: profilePicture == null || profilePicture.isEmpty
+                        ? Icon(
+                            Icons.medical_services,
+                            size: 40,
+                            color: Theme.of(context).primaryColor,
+                          )
+                        : null,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    name,
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[900],
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    category,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Contact Info
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildDetailItem(
+                      icon: Icons.email_outlined,
+                      title: 'Email',
+                      value: email,
+                    ),
+                    SizedBox(height: 16),
+                    _buildDetailItem(
+                      icon: Icons.phone_outlined,
+                      title: 'Phone',
+                      value: phone,
+                    ),
+                    SizedBox(height: 32),
+
+                    // Action Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _contactDoctor('email', email),
+                            icon: Icon(Icons.email, size: 20),
+                            label: Text('Send Email'),
+                            style: OutlinedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              side: BorderSide(color: Theme.of(context).primaryColor),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: hasRequested
+                              ? OutlinedButton.icon(
+                                  onPressed: null,
+                                  icon: Icon(Icons.check_circle, size: 20),
+                                  label: Text('Appointment Requested'),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(vertical: 12),
+                                    side: BorderSide(color: Colors.green),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(25),
+                                    ),
+                                  ),
+                                )
+                              : ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    _requestAppointment(doctorId, name);
+                                  },
+                                  icon: Icon(Icons.calendar_today, size: 20),
+                                  label: Text('Request Appointment'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Theme.of(context).primaryColor,
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(25),
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailItem({
     required IconData icon,
     required String title,
     required String value,
-    required Color color,
   }) {
     return Row(
       children: [
@@ -600,10 +935,11 @@ class _DoctorScreenState extends State<DoctorScreen>
                   fontWeight: FontWeight.w500,
                 ),
               ),
+              SizedBox(height: 4),
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 16,
                   color: Colors.grey[900],
                   fontWeight: FontWeight.w600,
                 ),
@@ -616,10 +952,10 @@ class _DoctorScreenState extends State<DoctorScreen>
   }
 
   void _contactDoctor(String method, String contact) async {
-    if (contact == 'N/A') {
+    if (method == 'email' && contact == 'N/A') {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Contact information not available'),
+          content: const Text('Email not available for this doctor'),
           backgroundColor: Colors.red[600],
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -633,17 +969,14 @@ class _DoctorScreenState extends State<DoctorScreen>
     final Uri uri;
     if (method == 'email') {
       uri = Uri.parse('mailto:$contact');
-    } else if (method == 'meet') {
-      uri = Uri.parse('https://meet.google.com');
     } else {
-      uri = Uri.parse('tel:$contact');
+      uri = Uri.parse('https://meet.google.com');
     }
 
     try {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri);
       } else {
-        // Fallback message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -673,7 +1006,6 @@ class _DoctorScreenState extends State<DoctorScreen>
         );
       }
     } catch (e) {
-      // Fallback message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
