@@ -10,14 +10,24 @@ class AuthService {
     required String username,
   }) async {
     try {
-      return await _supabase.auth.signUp(
+      final AuthResponse response = await _supabase.auth.signUp(
         email: email,
         password: password,
         data: {
           'username': username,
-          'avatar_url': null, // Initialize as null // Stores username in user_metadata
+          'avatar_url': null, // Initialize as null
         },
       );
+
+      // Assign patient role after successful signup
+      if (response.user != null) {
+        await _supabase.from('user_roles').insert({
+          'user_id': response.user!.id,
+          'role': 'patient', // Set role as patient
+        });
+      }
+
+      return response;
     } on AuthException catch (e) {
       throw e;
     } catch (e) {
@@ -25,16 +35,37 @@ class AuthService {
     }
   }
 
-  // Sign in with email and password
+  // Sign in with email and password - ONLY FOR PATIENTS
   Future<AuthResponse> signInWithEmailPassword({
     required String email,
     required String password,
   }) async {
     try {
-      return await _supabase.auth.signInWithPassword(
+      // First, sign in with Supabase Auth
+      final AuthResponse response = await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
+
+      // Check if user has patient role
+      if (response.user != null) {
+        final roleResponse = await _supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', response.user!.id)
+            .single();
+
+        final String userRole = roleResponse['role'] as String;
+        
+        // Only allow patients to login
+        if (userRole != 'patient') {
+          // Sign out non-patient users immediately
+          await _supabase.auth.signOut();
+          throw Exception('Access denied. Only patients can login through this app.');
+        }
+      }
+
+      return response;
     } on AuthException catch (e) {
       throw e;
     } catch (e) {
@@ -80,5 +111,34 @@ class AuthService {
     } catch (e) {
       throw Exception('Failed to send password reset email: $e');
     }
+  }
+
+  // Get user role
+  Future<String?> getUserRole() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return null;
+
+      final response = await _supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .single();
+
+      return response['role'] as String?;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Check if user has specific role
+  Future<bool> hasRole(String role) async {
+    final userRole = await getUserRole();
+    return userRole == role;
+  }
+
+  // Check if current user is patient
+  Future<bool> isPatient() async {
+    return await hasRole('patient');
   }
 }
