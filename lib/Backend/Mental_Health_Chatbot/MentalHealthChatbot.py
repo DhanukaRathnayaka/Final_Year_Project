@@ -20,10 +20,10 @@ load_dotenv()
 
 # Available Groq models
 MODELS = {
-    "default": "gemma2-9b-it",
-    "Gemma2-9B": "gemma2-9b-it",
+    "default": "llama-3.1-8b-instant",
+    "llama-3.1-8b-instant": "llama-3.1-8b-instant",
     "Llama3.1-70B": "llama3.1-70b-versatile",
-    "llama2-70b-4096": "gemma2-9b-it"  # alias for frontend compatibility
+    "llama2-70b-4096": "groq/compound"  # alias for frontend compatibility
 }
 
 # Initialize router

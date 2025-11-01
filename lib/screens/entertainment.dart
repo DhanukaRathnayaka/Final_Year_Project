@@ -1,8 +1,11 @@
 import '../config.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:safespace/screens/cbt_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:safespace/screens/media_player_screen.dart';
+
+
 
 class EntertainmentScreen extends StatefulWidget {
   const EntertainmentScreen({super.key});
@@ -13,6 +16,12 @@ class EntertainmentScreen extends StatefulWidget {
 
 class _EntertainmentScreenState extends State<EntertainmentScreen>
     with SingleTickerProviderStateMixin {
+  // APP ACCENT COLOR: change this single constant to update the
+  // primary/brand green used on this screen. Replacing Theme.of(context)
+  // primaryColor usage with this makes the screen self-contained.
+  // Pick any green you like (hex format 0xFFRRGGBB).
+  static const Color kAccentGreen = Color(0xFF10A98E);
+
   List<Map<String, dynamic>> entertainmentItems = [];
   bool isLoading = true;
   String errorMessage = '';
@@ -24,7 +33,7 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this); // ✅ 3 tabs now
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) return;
       _loadData();
@@ -35,8 +44,28 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
   Future<void> _loadData() async {
     if (_tabController.index == 0) {
       await fetchAllEntertainmentContent();
-    } else {
+    } else if (_tabController.index == 1) {
       await fetchRecommendedEntertainmentContent();
+    } else if (_tabController.index == 2) {
+      // ✅ Navigate to CBT Exercise screen
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Opening CBT Exercises...'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>  CBTExerciseScreen(),
+        ),
+      );
+
+      // Optional: Reset back to "All Content" tab
+      setState(() {
+        _tabController.index = 0;
+      });
     }
   }
 
@@ -90,33 +119,29 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
         return;
       }
 
-      // ✅ FIRST: Call the backend API to generate recommendations
+      // ✅ Call backend to trigger recommendation generation
       try {
-        // Use dynamic backend URL from config
         final baseUrl = Config.apiBaseUrl;
-        final apiUrl = '$baseUrl/recommend_entertainment/api/suggestions/${user.id}';
-        
+        final apiUrl =
+            '$baseUrl/recommend_entertainment/api/suggestions/${user.id}';
+
         final response = await http.get(
           Uri.parse(apiUrl),
           headers: {'Content-Type': 'application/json'},
         );
-        
+
         if (response.statusCode == 200) {
           print('✅ Recommendations generated successfully');
         } else {
           print('⚠️ API call failed: ${response.statusCode}');
-          // Continue anyway - recommendations might already exist
         }
-        
-        // Wait a bit for the backend to process and store recommendations
+
         await Future.delayed(const Duration(seconds: 1));
-        
       } catch (apiError) {
         print('⚠️ API call error (may be OK): $apiError');
-        // Continue anyway - recommendations might already exist
       }
 
-      // ✅ THEN: Fetch the stored recommendations from database
+      // ✅ Fetch recommendations from Supabase
       final response = await Supabase.instance.client
           .from('recommended_entertainments')
           .select('entertainments(*), matched_state, recommended_at')
@@ -133,7 +158,7 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
           };
         }).toList();
 
-        // Remove duplicates based on id to prevent duplication when navigating back
+        // Remove duplicates
         final uniqueItems = <Map<String, dynamic>>[];
         final seenIds = <dynamic>{};
 
@@ -153,7 +178,8 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
       } else {
         setState(() {
           entertainmentItems = [];
-          errorMessage = 'No recommendations available. Complete a mental health assessment first.';
+          errorMessage =
+              'No recommendations available. Complete a mental health assessment first.';
           isLoading = false;
         });
       }
@@ -183,17 +209,29 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
             onPressed: _loadData,
           ),
         ],
+        // Use the screen accent green for the TabBar indicator and selected
+        // label color so active tabs match the app theme.
         bottom: TabBar(
           controller: _tabController,
+          // active tab label color
+          labelColor: kAccentGreen,
+          // inactive label color
+          unselectedLabelColor: Colors.grey.shade600,
+          // underline indicator uses the same accent green
+          indicator: UnderlineTabIndicator(
+            borderSide: BorderSide(color: kAccentGreen, width: 3.0),
+            insets: const EdgeInsets.symmetric(horizontal: 24.0),
+          ),
           tabs: const [
             Tab(text: "All Content"),
             Tab(text: "For You"),
+            Tab(text: "Exercises"), // ✅ Added new tab
           ],
         ),
       ),
       body: Column(
         children: [
-          if (!isLoading && errorMessage.isEmpty && _tabController.index == 0) 
+          if (!isLoading && errorMessage.isEmpty && _tabController.index == 0)
             _buildCategoryFilter(),
           Expanded(
             child: isLoading
@@ -218,6 +256,14 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
             child: ChoiceChip(
               label: Text(category),
               selected: isSelected,
+              // Use the screen green for selected chip background so the filter
+              // matches the accent used on the rest of the screen. Adjust
+              // kAccentGreen at the top of the file to change this globally.
+              selectedColor: kAccentGreen.withOpacity(0.12),
+              labelStyle: TextStyle(
+                color: isSelected ? kAccentGreen : Colors.black87,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
               onSelected: (selected) {
                 setState(() {
                   selectedCategory = category;
@@ -244,9 +290,12 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
+              // make the error icon match the app green accent so the screen
+              // has a consistent theme; change kAccentGreen up above to alter
+              // this color everywhere.
               Icons.error_outline,
               size: 50,
-              color: Colors.grey[400],
+              color: kAccentGreen.withOpacity(0.85),
             ),
             const SizedBox(height: 16),
             Text(
@@ -275,15 +324,16 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
+              // consistent green tint for empty-state icon
               Icons.search_off,
               size: 50,
-              color: Colors.grey[300],
+              color: kAccentGreen.withOpacity(0.35),
             ),
             const SizedBox(height: 16),
             Text(
-              _tabController.index == 0 
-                ? 'No content found for $selectedCategory'
-                : 'No personalized recommendations yet',
+              _tabController.index == 0
+                  ? 'No content found for $selectedCategory'
+                  : 'No personalized recommendations yet',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[600],
@@ -352,16 +402,19 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
               type,
               style: TextStyle(
                 fontSize: 14.0,
-                color: Colors.grey[600],
+                // use a darker accent green instead of neutral grey so item
+                // types read as part of the green theme
+                color: kAccentGreen.withOpacity(0.9),
               ),
             ),
             if (recommendedAt != null) ...[
               const SizedBox(height: 2),
               Text(
                 "Recommended: ${_formatDate(recommendedAt)}",
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11.0,
-                  color: Colors.blueGrey,
+                  // subtle green tint for recommendation meta
+                  color: kAccentGreen.withOpacity(0.85),
                 ),
               ),
             ],
@@ -370,7 +423,8 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
         trailing: IconButton(
           icon: Icon(
             Icons.play_circle_fill,
-            color: Theme.of(context).primaryColor,
+            // Use the screen accent green instead of Theme.primaryColor
+            color: kAccentGreen,
             size: 30.0,
           ),
           onPressed: () {
