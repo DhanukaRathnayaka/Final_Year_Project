@@ -21,10 +21,10 @@ class AuthService {
 
       // Assign patient role after successful signup
       if (response.user != null) {
-        await _supabase.from('user_roles').insert({
+        await _supabase.from('user_roles').upsert({
           'user_id': response.user!.id,
           'role': 'patient', // Set role as patient
-        });
+        }, onConflict: 'user_id');
       }
 
       return response;
