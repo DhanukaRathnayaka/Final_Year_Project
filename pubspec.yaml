@@ -25,6 +25,7 @@ dependencies:
   icons_plus: ^4.0.0
   font_awesome_flutter: ^10.9.1
   introduction_screen: ^3.1.14
+  jitsi_meet_flutter_sdk: ^0.1.7
 
 dev_dependencies:
   flutter_test:
