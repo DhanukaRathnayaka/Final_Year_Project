@@ -409,12 +409,26 @@ class HomeScreenState extends State<HomeScreen>
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                width: 48,
+                height: 48,
+                padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: _primaryColor,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(LineIcons.robot, color: Colors.white, size: 24),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.asset(
+                    'assets/images/chatbot_app.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: _primaryColor,
+                        child: Icon(LineIcons.robot, color: Colors.white, size: 24),
+                      );
+                    },
+                  ),
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
