@@ -7,6 +7,7 @@ import 'package:safespace/screens/chatbot.dart';
 import 'package:safespace/screens/notification.dart';
 import 'package:safespace/authentication/auth_service.dart';
 import 'package:safespace/screens/suggestion_generator_widget.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool isGuest;
@@ -33,7 +34,6 @@ class HomeScreenState extends State<HomeScreen>
   // Custom theme color
   final Color _primaryColor = const Color.fromARGB(255, 74, 146, 128);
   final Color _backgroundColor = const Color(0xFFf8fdfb);
-  final Color _surfaceColor = const Color(0xFFffffff);
   final Color _onBackgroundColor = const Color(0xFF1a1a1a);
   final Color _onSurfaceColor = const Color(0xFF2d2d2d);
 
@@ -242,31 +242,9 @@ class HomeScreenState extends State<HomeScreen>
                 children: [
                   // Top Row (Profile, Date, Notification)
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Profile Avatar
-                      Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: CircleAvatar(
-                          radius: 24,
-                          backgroundColor: Colors.white.withOpacity(0.2),
-                          backgroundImage: widget.isGuest
-                              ? null
-                              : const AssetImage('assets/images/profile.jpg'),
-                          child: widget.isGuest
-                              ? const Icon(
-                                  Icons.person,
-                                  color: Colors.white,
-                                  size: 28,
-                                )
-                              : null,
-                        ),
-                      ),
-
-                      // Date
+                      // Date (centered)
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -278,18 +256,25 @@ class HomeScreenState extends State<HomeScreen>
                         ),
                         child: Text(
                           _formattedDate,
-                          style: const TextStyle(
+                          style: GoogleFonts.poppins(
                             fontSize: 14,
-                            color: Color.fromARGB(255, 10, 10, 10),
+                            color: const Color.fromARGB(255, 10, 10, 10),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
 
+                      const Spacer(),
+
                       // Notification Button
                       Container(
                         decoration: BoxDecoration(
-                          color: const Color.fromARGB(255, 14, 13, 13).withOpacity(0.2),
+                          color: const Color.fromARGB(
+                            255,
+                            14,
+                            13,
+                            13,
+                          ).withOpacity(0.2),
                           shape: BoxShape.circle,
                         ),
                         child: IconButton(
@@ -325,12 +310,12 @@ class HomeScreenState extends State<HomeScreen>
                       children: [
                         Text(
                           _userGreeting,
-                          style: const TextStyle(
-                            color: Color.fromARGB(255, 12, 11, 11),
-                            fontSize: 32,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 36,
                             fontWeight: FontWeight.bold,
                             shadows: [
-                              Shadow(
+                              const Shadow(
                                 offset: Offset(0, 2),
                                 blurRadius: 4,
                                 color: Colors.black26,
@@ -343,11 +328,11 @@ class HomeScreenState extends State<HomeScreen>
                           widget.isGuest
                               ? "Enjoy limited access as guest"
                               : "We hope you are doing great today",
-                          style: TextStyle(
-                            color: const Color.fromARGB(255, 12, 12, 12).withOpacity(0.9),
+                          style: GoogleFonts.poppins(
+                            color: Colors.white.withOpacity(0.9),
                             fontSize: 16,
                             shadows: [
-                              Shadow(
+                              const Shadow(
                                 offset: Offset(0, 1),
                                 blurRadius: 2,
                                 color: Colors.black26,
@@ -356,22 +341,19 @@ class HomeScreenState extends State<HomeScreen>
                           ),
                         ),
                         const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text(
-                            "Thought of the day",
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
-                              fontSize: 12,
-                              fontStyle: FontStyle.italic,
-                            ),
+                        Text(
+                          "\"Your mental health is a priority. Take it one day at a time.\"",
+                          style: GoogleFonts.poppins(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 14,
+                            fontStyle: FontStyle.italic,
+                            shadows: [
+                              const Shadow(
+                                offset: Offset(0, 1),
+                                blurRadius: 2,
+                                color: Colors.black26,
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -415,6 +397,7 @@ class HomeScreenState extends State<HomeScreen>
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _primaryColor.withOpacity(0.3), width: 1),
             boxShadow: [
               BoxShadow(
                 color: _primaryColor.withOpacity(0.1),
@@ -442,7 +425,7 @@ class HomeScreenState extends State<HomeScreen>
                       widget.isGuest
                           ? "Sign in to access chatbot"
                           : "Hello! Let's Chat",
-                      style: TextStyle(
+                      style: GoogleFonts.poppins(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: _primaryColor.withOpacity(0.8),
@@ -453,7 +436,10 @@ class HomeScreenState extends State<HomeScreen>
                       widget.isGuest
                           ? "Get personalized mental health support"
                           : "Your AI companion is ready to listen",
-                      style: TextStyle(fontSize: 14, color: _primaryColor),
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: _primaryColor,
+                      ),
                     ),
                   ],
                 ),
@@ -475,19 +461,19 @@ class HomeScreenState extends State<HomeScreen>
           children: [
             Text(
               "Your Recommendations",
-              style: TextStyle(
+              style: GoogleFonts.poppins(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: _onBackgroundColor,
+                color: const Color(0xFF1a1a1a),
               ),
             ),
             Text(
               widget.isGuest
                   ? "Sign in to see personalized suggestions"
                   : "Based on your recent conversations",
-              style: TextStyle(
+              style: GoogleFonts.poppins(
                 fontSize: 12,
-                color: _onSurfaceColor.withOpacity(0.6),
+                color: const Color(0xFF2d2d2d).withOpacity(0.6),
               ),
             ),
           ],
@@ -498,9 +484,9 @@ class HomeScreenState extends State<HomeScreen>
               Navigator.pushReplacementNamed(context, '/login');
             },
             icon: const Icon(Icons.login, size: 16),
-            label: const Text('Sign In'),
+            label: Text('Sign In', style: GoogleFonts.poppins()),
             style: TextButton.styleFrom(
-              foregroundColor: _primaryColor,
+              foregroundColor: const Color(0xFF4A9280),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             ),
           )
@@ -531,7 +517,7 @@ class HomeScreenState extends State<HomeScreen>
               const SizedBox(height: 8),
               Text(
                 'Unable to load recommendations',
-                style: TextStyle(
+                style: GoogleFonts.poppins(
                   color: _onSurfaceColor.withOpacity(0.6),
                   fontSize: 14,
                 ),
@@ -555,21 +541,21 @@ class HomeScreenState extends State<HomeScreen>
           icon: Icons.visibility_outlined,
           title: "Limit Exposure to Screens",
           subtitle: "Control your screen time for better mental health",
-          iconColor: _primaryColor,
+          iconColor: const Color(0xFF2196F3),
         ),
         const SizedBox(height: 12),
         _buildGuestSuggestionCard(
           icon: Icons.bed,
           title: "Improve Sleep Quality",
           subtitle: "Maintain a consistent sleep schedule",
-          iconColor: _primaryColor,
+          iconColor: const Color(0xFF4CAF50),
         ),
         const SizedBox(height: 12),
         _buildGuestSuggestionCard(
           icon: Icons.sports_gymnastics,
           title: "Regular Exercise",
           subtitle: "Stay active for mental and physical well-being",
-          iconColor: _primaryColor,
+          iconColor: const Color(0xFFFF9800),
         ),
       ],
     );
@@ -596,8 +582,9 @@ class HomeScreenState extends State<HomeScreen>
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: _surfaceColor,
-          borderRadius: BorderRadius.circular(16),
+          color: const Color(0xFFffffff),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: iconColor.withOpacity(0.2), width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
@@ -614,11 +601,7 @@ class HomeScreenState extends State<HomeScreen>
                 color: iconColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                Icons.lock_outline,
-                color: _onSurfaceColor.withOpacity(0.4),
-                size: 24,
-              ),
+              child: Icon(icon, color: iconColor, size: 24),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -627,25 +610,29 @@ class HomeScreenState extends State<HomeScreen>
                 children: [
                   Text(
                     title,
-                    style: TextStyle(
+                    style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: _onSurfaceColor.withOpacity(0.4),
+                      color: iconColor,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "Sign in to view details",
-                    style: TextStyle(
+                    subtitle,
+                    style: GoogleFonts.poppins(
                       fontSize: 14,
-                      color: _onSurfaceColor.withOpacity(0.4),
+                      color: const Color(0xFF2d2d2d).withOpacity(0.6),
                       height: 1.3,
                     ),
                   ),
                 ],
               ),
             ),
-            Icon(Icons.lock, size: 16, color: _onSurfaceColor.withOpacity(0.4)),
+            Icon(
+              Icons.lock,
+              size: 16,
+              color: const Color(0xFF2d2d2d).withOpacity(0.4),
+            ),
           ],
         ),
       ),
@@ -658,7 +645,7 @@ class HomeScreenState extends State<HomeScreen>
         Navigator.pushReplacementNamed(context, '/login');
       },
       icon: const Icon(Icons.login),
-      label: const Text('Sign In'),
+      label: Text('Sign In', style: GoogleFonts.poppins()),
       backgroundColor: _primaryColor,
       foregroundColor: Colors.white,
       elevation: 4,
@@ -687,7 +674,7 @@ class HomeScreenState extends State<HomeScreen>
                     const SizedBox(width: 8),
                     Text(
                       'Guest Mode Restriction',
-                      style: TextStyle(
+                      style: GoogleFonts.poppins(
                         fontWeight: FontWeight.bold,
                         color: _onBackgroundColor,
                       ),
@@ -696,14 +683,17 @@ class HomeScreenState extends State<HomeScreen>
                 ),
                 content: Text(
                   'Please sign in to access all features and personalized content.',
-                  style: TextStyle(fontSize: 16, color: _onSurfaceColor),
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    color: _onSurfaceColor,
+                  ),
                 ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     child: Text(
                       'Later',
-                      style: TextStyle(color: _primaryColor),
+                      style: GoogleFonts.poppins(color: _primaryColor),
                     ),
                   ),
                   ElevatedButton(
@@ -718,7 +708,7 @@ class HomeScreenState extends State<HomeScreen>
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text('Sign In Now'),
+                    child: Text('Sign In Now', style: GoogleFonts.poppins()),
                   ),
                 ],
               ),

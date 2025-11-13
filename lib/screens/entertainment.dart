@@ -1,6 +1,7 @@
 import '../config.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:line_icons/line_icons.dart';
 import 'package:safespace/screens/cbt_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:safespace/screens/media_player_screen.dart';
@@ -15,7 +16,7 @@ class EntertainmentScreen extends StatefulWidget {
 }
 
 class _EntertainmentScreenState extends State<EntertainmentScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   // APP ACCENT COLOR: change this single constant to update the
   // primary/brand green used on this screen. Replacing Theme.of(context)
   // primaryColor usage with this makes the screen self-contained.
@@ -29,6 +30,8 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
   final List<String> categories = ['All', 'Meditation', 'Music Track', 'Video'];
 
   late TabController _tabController;
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
@@ -38,6 +41,14 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
       if (_tabController.indexIsChanging) return;
       _loadData();
     });
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
+    _fadeController.forward();
     _loadData();
   }
 
@@ -202,35 +213,78 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Entertainment'),
+        title: FadeTransition(
+          opacity: _fadeAnimation,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(LineIcons.music, color: const Color(0xFF6ABFA0), size: 28),
+              const SizedBox(width: 8),
+              Text(
+                'Entertainment',
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF2D3E40),
+                ),
+              ),
+            ],
+          ),
+        ),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFEAFBF5), Color(0xFFFFFFFF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadData,
           ),
         ],
-        // Use the screen accent green for the TabBar indicator and selected
-        // label color so active tabs match the app theme.
         bottom: TabBar(
           controller: _tabController,
-          // active tab label color
-          labelColor: kAccentGreen,
-          // inactive label color
-          unselectedLabelColor: Colors.grey.shade600,
-          // underline indicator uses the same accent green
-          indicator: UnderlineTabIndicator(
-            borderSide: BorderSide(color: kAccentGreen, width: 3.0),
-            insets: const EdgeInsets.symmetric(horizontal: 24.0),
+          indicator: BoxDecoration(
+            color: const Color(0xFF74C69D).withOpacity(0.2),
+            borderRadius: BorderRadius.circular(20),
           ),
+          indicatorSize: TabBarIndicatorSize.tab,
+          labelColor: const Color(0xFF2D3E40),
+          unselectedLabelColor: Colors.grey,
+          labelStyle: const TextStyle(fontWeight: FontWeight.w600),
           tabs: const [
             Tab(text: "All Content"),
             Tab(text: "For You"),
-            Tab(text: "Exercises"), // ✅ Added new tab
+            Tab(text: "Exercises"),
           ],
         ),
       ),
       body: Column(
         children: [
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFFEAFBF5), Color(0xFFFFFFFF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Text(
+              "Find peace through music, meditation, and reflection.",
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+                fontStyle: FontStyle.italic,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
           if (!isLoading && errorMessage.isEmpty && _tabController.index == 0)
             _buildCategoryFilter(),
           Expanded(
@@ -491,6 +545,7 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _fadeController.dispose();
     super.dispose();
   }
 }
