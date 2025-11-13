@@ -6,8 +6,6 @@ import 'package:safespace/screens/cbt_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:safespace/screens/media_player_screen.dart';
 
-
-
 class EntertainmentScreen extends StatefulWidget {
   const EntertainmentScreen({super.key});
 
@@ -68,9 +66,7 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
 
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) =>  CBTExerciseScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => CBTExerciseScreen()),
       );
 
       // Optional: Reset back to "All Content" tab
@@ -160,13 +156,10 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
           .order('recommended_at', ascending: false);
 
       if (response.isNotEmpty) {
-        final List<Map<String, dynamic>> items =
-            response.map<Map<String, dynamic>>((item) {
+        final List<Map<String, dynamic>>
+        items = response.map<Map<String, dynamic>>((item) {
           final entertainment = item['entertainments'] as Map<String, dynamic>;
-          return {
-            ...entertainment,
-            'recommended_at': item['recommended_at'],
-          };
+          return {...entertainment, 'recommended_at': item['recommended_at']};
         }).toList();
 
         // Remove duplicates
@@ -242,10 +235,7 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
         ),
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
         ],
         bottom: TabBar(
           controller: _tabController,
@@ -266,7 +256,8 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
       body: Column(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [Color(0xFFEAFBF5), Color(0xFFFFFFFF)],
@@ -277,8 +268,9 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
             child: Text(
               "Find peace through music, meditation, and reflection.",
               style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[700],
                 fontStyle: FontStyle.italic,
               ),
               textAlign: TextAlign.center,
@@ -290,8 +282,8 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
             child: isLoading
                 ? _buildLoadingState()
                 : errorMessage.isNotEmpty
-                    ? _buildErrorState()
-                    : _buildContentList(),
+                ? _buildErrorState()
+                : _buildContentList(),
           ),
         ],
       ),
@@ -330,9 +322,7 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
   }
 
   Widget _buildLoadingState() {
-    return const Center(
-      child: CircularProgressIndicator(),
-    );
+    return const Center(child: CircularProgressIndicator());
   }
 
   Widget _buildErrorState() {
@@ -354,10 +344,7 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
             Text(
               errorMessage,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[700],
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.grey[700]),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
@@ -387,10 +374,7 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
               _tabController.index == 0
                   ? 'No content found for $selectedCategory'
                   : 'No personalized recommendations yet',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
           ],
         ),
@@ -434,17 +418,11 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
                   color: Colors.grey[300],
                   borderRadius: BorderRadius.circular(8.0),
                 ),
-                child: Icon(
-                  _getMediaIcon(type),
-                  color: Colors.grey[600],
-                ),
+                child: Icon(_getMediaIcon(type), color: Colors.grey[600]),
               ),
         title: Text(
           title,
-          style: const TextStyle(
-            fontSize: 16.0,
-            fontWeight: FontWeight.w500,
-          ),
+          style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w500),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
