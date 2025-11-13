@@ -251,7 +251,6 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
           controller: _tabController,
           indicator: BoxDecoration(
             color: const Color(0xFF74C69D).withOpacity(0.2),
-            borderRadius: BorderRadius.circular(20),
           ),
           indicatorSize: TabBarIndicatorSize.tab,
           labelColor: const Color(0xFF2D3E40),
