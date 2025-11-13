@@ -159,9 +159,9 @@ class _ProfilePageState extends State<ProfilePage>
             return AlertDialog(
               title: Row(
                 children: [
-                  Icon(Icons.edit, color: Theme.of(context).primaryColor),
+                  const Icon(Icons.edit, color: Color(0xFF4A9280)),
                   SizedBox(width: 8),
-                  Text('Edit Profile'),
+                  const Text('Edit Profile'),
                 ],
               ),
               content: SingleChildScrollView(
@@ -175,21 +175,26 @@ class _ProfilePageState extends State<ProfilePage>
                         hintText: 'Enter your display name',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFF4A9280)),
                         ),
-                        prefixIcon: Icon(Icons.person),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFF4A9280), width: 2),
+                        ),
+                        prefixIcon: const Icon(Icons.person, color: Color(0xFF4A9280)),
                       ),
                     ),
                     SizedBox(height: 16),
                     SwitchListTile(
-                      title: Text('Hide Email'),
-                      subtitle: Text('Hide your email from public view'),
+                      title: const Text('Hide Email'),
+                      subtitle: const Text('Hide your email from public view'),
                       value: tempHideEmail,
                       onChanged: (value) {
                         setState(() {
                           tempHideEmail = value;
                         });
                       },
-                      activeColor: Theme.of(context).primaryColor,
+                      activeColor: const Color(0xFF4A9280),
                     ),
                   ],
                 ),
@@ -197,7 +202,7 @@ class _ProfilePageState extends State<ProfilePage>
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: Text('Cancel'),
+                  child: const Text('Cancel'),
                 ),
                 ElevatedButton(
                   onPressed: () async {
@@ -238,10 +243,10 @@ class _ProfilePageState extends State<ProfilePage>
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).primaryColor,
+                    backgroundColor: const Color(0xFF4A9280),
                     foregroundColor: Colors.white,
                   ),
-                  child: Text('Save'),
+                  child: const Text('Save'),
                 ),
               ],
             );
@@ -303,25 +308,36 @@ class _ProfilePageState extends State<ProfilePage>
     final displayEmail = _hideEmail ? _maskEmail(email) : email;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFf8fdfb),
       appBar: AppBar(
         title: Row(
           children: [
-            Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+            if (_avatarUrl != null)
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: const Color(0xFF4A9280).withOpacity(0.2),
+                backgroundImage: NetworkImage(_avatarUrl!),
+                onBackgroundImageError: (exception, stackTrace) {
+                  // Fallback handled
+                },
+              )
+            else
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4A9280).withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(LineIcons.user, color: Color(0xFF4A9280), size: 20),
               ),
-              child: Icon(LineIcons.user, color: Theme.of(context).primaryColor, size: 24),
-            ),
             SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Profile',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: const Color(0xFF1a1a1a)),
                 ),
                 Text(
                   'Manage your account',
@@ -367,10 +383,10 @@ class _ProfilePageState extends State<ProfilePage>
           Container(
             padding: EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withOpacity(0.1),
+              color: const Color(0xFF4A9280).withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Icon(LineIcons.user, size: 48, color: Theme.of(context).primaryColor),
+            child: const Icon(LineIcons.user, size: 48, color: Color(0xFF4A9280)),
           ),
           SizedBox(height: 16),
           Text(
@@ -378,8 +394,8 @@ class _ProfilePageState extends State<ProfilePage>
             style: TextStyle(fontSize: 16, color: Colors.grey[600]),
           ),
           SizedBox(height: 8),
-          CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).primaryColor),
+          const CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4A9280)),
           ),
         ],
       ),
@@ -407,8 +423,8 @@ class _ProfilePageState extends State<ProfilePage>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Theme.of(context).primaryColor.withOpacity(0.1),
-                  Theme.of(context).primaryColor.withOpacity(0.05)
+                  const Color(0xFF4A9280).withOpacity(0.08),
+                  const Color(0xFFEAFBF5).withOpacity(0.4)
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -421,15 +437,15 @@ class _ProfilePageState extends State<ProfilePage>
                   children: [
                     CircleAvatar(
                       radius: 60,
-                      backgroundColor: Theme.of(context).primaryColor.withOpacity(0.3),
+                      backgroundColor: const Color(0xFF4A9280).withOpacity(0.15),
                       backgroundImage: _avatarUrl != null
                           ? NetworkImage(_avatarUrl!)
                           : null,
                       child: _avatarUrl == null
-                          ? Icon(
+                          ? const Icon(
                               LineIcons.user,
                               size: 60,
-                              color: Theme.of(context).primaryColor,
+                              color: Color(0xFF4A9280),
                             )
                           : null,
                     ),
@@ -455,12 +471,12 @@ class _ProfilePageState extends State<ProfilePage>
                       right: 0,
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Theme.of(context).primaryColor,
+                          color: const Color(0xFF4A9280),
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 3),
                         ),
                         child: IconButton(
-                          icon: Icon(
+                          icon: const Icon(
                             Icons.camera_alt,
                             color: Colors.white,
                             size: 20,
@@ -478,7 +494,7 @@ class _ProfilePageState extends State<ProfilePage>
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.grey[900],
+                    color: const Color(0xFF1a1a1a),
                   ),
                 ),
                 SizedBox(height: 4),
@@ -513,7 +529,7 @@ class _ProfilePageState extends State<ProfilePage>
             icon: Icons.edit_outlined,
             title: 'Edit Profile',
             subtitle: 'Update your personal information',
-            color: Colors.blue[600]!,
+            color: const Color(0xFF4A9280),
             onTap: _showEditProfileDialog,
           ),
           Divider(height: 1, indent: 56),
@@ -521,7 +537,7 @@ class _ProfilePageState extends State<ProfilePage>
             icon: Icons.notifications_outlined,
             title: 'Notifications',
             subtitle: 'Manage your notification preferences',
-            color: Colors.orange[600]!,
+            color: const Color(0xFF4A9280),
             onTap: () {
               _showSuccessSnackBar('Notifications coming soon!');
             },
@@ -531,7 +547,7 @@ class _ProfilePageState extends State<ProfilePage>
             icon: Icons.security_outlined,
             title: 'Privacy & Security',
             subtitle: 'Manage your privacy settings',
-            color: Colors.green[600]!,
+            color: const Color(0xFF4A9280),
             onTap: () {
               _showSuccessSnackBar('Privacy settings coming soon!');
             },
@@ -552,14 +568,14 @@ class _ProfilePageState extends State<ProfilePage>
       leading: Container(
         padding: EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withOpacity(0.12),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, color: color, size: 20),
       ),
       title: Text(
         title,
-        style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey[900]),
+        style: TextStyle(fontWeight: FontWeight.w600, color: const Color(0xFF1a1a1a)),
       ),
       subtitle: Text(
         subtitle,
@@ -594,14 +610,14 @@ class _ProfilePageState extends State<ProfilePage>
         children: [
           Row(
             children: [
-              Icon(Icons.info_outline, color: Theme.of(context).primaryColor),
+              const Icon(Icons.info_outline, color: Color(0xFF4A9280)),
               SizedBox(width: 8),
               Text(
                 'Account Information',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey[900],
+                  color: const Color(0xFF1a1a1a),
                 ),
               ),
             ],
@@ -616,15 +632,15 @@ class _ProfilePageState extends State<ProfilePage>
           Container(
             padding: EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withOpacity(0.1),
+              color: const Color(0xFF4A9280).withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Theme.of(context).primaryColor.withOpacity(0.3)),
+              border: Border.all(color: const Color(0xFF4A9280).withOpacity(0.3)),
             ),
             child: Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.verified_outlined,
-                  color: Theme.of(context).primaryColor,
+                  color: Color(0xFF4A9280),
                   size: 20,
                 ),
                 SizedBox(width: 8),
@@ -633,7 +649,7 @@ class _ProfilePageState extends State<ProfilePage>
                     'Your account is verified and secure',
                     style: TextStyle(
                       fontSize: 13,
-                      color: Theme.of(context).primaryColor.withOpacity(0.8),
+                      color: const Color(0xFF4A9280).withOpacity(0.8),
                       fontStyle: FontStyle.italic,
                     ),
                   ),
@@ -663,7 +679,7 @@ class _ProfilePageState extends State<ProfilePage>
             value,
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[900],
+              color: const Color(0xFF1a1a1a),
               fontWeight: FontWeight.w600,
             ),
           ),
