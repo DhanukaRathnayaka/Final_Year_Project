@@ -99,30 +99,31 @@ class _ProfilePageState extends State<ProfilePage>
       // Upload to Supabase Storage
       final userId = _authService.getCurrentUserId();
       final fileExtension = image.name.split('.').last.toLowerCase();
-      final fileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
+      final fileName =
+          'profile_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
       final filePath = 'user_avatars/$userId/$fileName';
 
       final bytes = await image.readAsBytes();
       final contentType = 'image/$fileExtension';
 
       // Upload with upsert option
-      await _supabase.storage.from('avatars').uploadBinary(
-        filePath,
-        bytes,
-        fileOptions: supabase.FileOptions(
-          contentType: contentType,
-          upsert: true,
-        ),
-      );
+      await _supabase.storage
+          .from('avatars')
+          .uploadBinary(
+            filePath,
+            bytes,
+            fileOptions: supabase.FileOptions(
+              contentType: contentType,
+              upsert: true,
+            ),
+          );
 
       // Get public URL
       final imageUrl = _supabase.storage.from('avatars').getPublicUrl(filePath);
 
       // Update user metadata
       final updatedMetadata = {...?_userMetadata, 'avatar_url': imageUrl};
-      await _supabase.auth.updateUser(
-        UserAttributes(data: updatedMetadata),
-      );
+      await _supabase.auth.updateUser(UserAttributes(data: updatedMetadata));
 
       // Update local state immediately
       setState(() {
@@ -148,7 +149,9 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Future<void> _showEditProfileDialog() async {
-    final TextEditingController nameController = TextEditingController(text: _userMetadata?['username'] ?? '');
+    final TextEditingController nameController = TextEditingController(
+      text: _userMetadata?['username'] ?? '',
+    );
     bool tempHideEmail = _hideEmail;
 
     await showDialog(
@@ -175,13 +178,21 @@ class _ProfilePageState extends State<ProfilePage>
                         hintText: 'Enter your display name',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF4A9280)),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF4A9280),
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF4A9280), width: 2),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF4A9280),
+                            width: 2,
+                          ),
                         ),
-                        prefixIcon: const Icon(Icons.person, color: Color(0xFF4A9280)),
+                        prefixIcon: const Icon(
+                          Icons.person,
+                          color: Color(0xFF4A9280),
+                        ),
                       ),
                     ),
                     SizedBox(height: 16),
@@ -218,11 +229,13 @@ class _ProfilePageState extends State<ProfilePage>
 
                       // Update user metadata
                       await _supabase.auth.updateUser(
-                        UserAttributes(data: {
-                          ...?_userMetadata,
-                          'username': newName,
-                          'hide_email': tempHideEmail,
-                        }),
+                        UserAttributes(
+                          data: {
+                            ...?_userMetadata,
+                            'username': newName,
+                            'hide_email': tempHideEmail,
+                          },
+                        ),
                       );
 
                       // Update local state
@@ -329,7 +342,11 @@ class _ProfilePageState extends State<ProfilePage>
                   color: const Color(0xFF4A9280).withOpacity(0.2),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(LineIcons.user, color: Color(0xFF4A9280), size: 20),
+                child: const Icon(
+                  LineIcons.user,
+                  color: Color(0xFF4A9280),
+                  size: 20,
+                ),
               ),
             SizedBox(width: 12),
             Column(
@@ -337,7 +354,11 @@ class _ProfilePageState extends State<ProfilePage>
               children: [
                 Text(
                   'Profile',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: const Color(0xFF1a1a1a)),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: const Color(0xFF1a1a1a),
+                  ),
                 ),
                 Text(
                   'Manage your account',
@@ -386,7 +407,11 @@ class _ProfilePageState extends State<ProfilePage>
               color: const Color(0xFF4A9280).withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Icon(LineIcons.user, size: 48, color: Color(0xFF4A9280)),
+            child: const Icon(
+              LineIcons.user,
+              size: 48,
+              color: Color(0xFF4A9280),
+            ),
           ),
           SizedBox(height: 16),
           Text(
@@ -424,7 +449,7 @@ class _ProfilePageState extends State<ProfilePage>
               gradient: LinearGradient(
                 colors: [
                   const Color(0xFF4A9280).withOpacity(0.08),
-                  const Color(0xFFEAFBF5).withOpacity(0.4)
+                  const Color(0xFFEAFBF5).withOpacity(0.4),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -437,7 +462,9 @@ class _ProfilePageState extends State<ProfilePage>
                   children: [
                     CircleAvatar(
                       radius: 60,
-                      backgroundColor: const Color(0xFF4A9280).withOpacity(0.15),
+                      backgroundColor: const Color(
+                        0xFF4A9280,
+                      ).withOpacity(0.15),
                       backgroundImage: _avatarUrl != null
                           ? NetworkImage(_avatarUrl!)
                           : null,
@@ -575,7 +602,10 @@ class _ProfilePageState extends State<ProfilePage>
       ),
       title: Text(
         title,
-        style: TextStyle(fontWeight: FontWeight.w600, color: const Color(0xFF1a1a1a)),
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          color: const Color(0xFF1a1a1a),
+        ),
       ),
       subtitle: Text(
         subtitle,
@@ -634,7 +664,9 @@ class _ProfilePageState extends State<ProfilePage>
             decoration: BoxDecoration(
               color: const Color(0xFF4A9280).withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF4A9280).withOpacity(0.3)),
+              border: Border.all(
+                color: const Color(0xFF4A9280).withOpacity(0.3),
+              ),
             ),
             child: Row(
               children: [

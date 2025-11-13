@@ -424,7 +424,11 @@ class HomeScreenState extends State<HomeScreen>
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
                         color: _primaryColor,
-                        child: Icon(LineIcons.robot, color: Colors.white, size: 24),
+                        child: Icon(
+                          LineIcons.robot,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                       );
                     },
                   ),
