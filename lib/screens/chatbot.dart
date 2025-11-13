@@ -479,9 +479,8 @@ class _ChatBotScreenState extends State<ChatBotScreen>
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFF4A9280).withOpacity(0.2),
+                    color: const Color.fromARGB(255, 255, 255, 255).withOpacity(0.2),
                     width: 1.5,
                   ),
                 ),
