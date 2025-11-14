@@ -8,7 +8,7 @@ from supabase import create_client, Client
 from typing import Dict, List, Optional
 
 # Initialize Groq client
-GROQ_API_KEY = os.environ.get("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")
+GROQ_API_KEY = os.environ.get("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")
 
 # Initialize Supabase client
 supabase_url = os.environ.get("SUPABASE_URL", "https://cpuhivcyhvqayzgdvdaw.supabase.co")

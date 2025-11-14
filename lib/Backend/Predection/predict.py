@@ -13,7 +13,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'aI-SUGESTIONS'))
 from ai import SuggestionManager
 
 # 🔑 Add your Groq API key here
-GROQ_API_KEY = "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"
+GROQ_API_KEY = "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"
 
 
 class GroqMentalStatePredictor:

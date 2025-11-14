@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:jitsi_meet_flutter_sdk/jitsi_meet_flutter_sdk.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:line_icons/line_icons.dart';
 
 class DoctorScreen extends StatefulWidget {
   @override
   _DoctorScreenState createState() => _DoctorScreenState();
 }
 
-class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderStateMixin {
+class _DoctorScreenState extends State<DoctorScreen>
+    with TickerProviderStateMixin {
   final _supabase = Supabase.instance.client;
   String? _userId;
   String? _dominantState;
@@ -16,14 +19,31 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
   List<Map<String, dynamic>> _matchingDoctors = [];
   bool _isRequestingMeeting = false;
   List<Map<String, dynamic>> _todaysAppointments = [];
-  
+
+  // Custom theme colors - matching home/entertainment screens
+  static const Color _primaryColor = Color(0xFF4A9280); // Calm green
+  static const Color _backgroundColor = Color(0xFFF8FDFB);
+  static const Color _accentGreen = Color(0xFF10A98E);
+
   // Tab controller
   late TabController _tabController;
+
+  // Animation controller
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
+    _fadeController.forward();
     _fetchUserAndMentalState();
     _fetchTodaysAppointments();
   }
@@ -31,6 +51,7 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
   @override
   void dispose() {
     _tabController.dispose();
+    _fadeController.dispose();
     super.dispose();
   }
 
@@ -99,7 +120,7 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
       doctors.sort((a, b) {
         final aIsOnline = a['avb_status'] == true;
         final bIsOnline = b['avb_status'] == true;
-        
+
         // Online doctors come first
         if (aIsOnline && !bIsOnline) {
           return -1;
@@ -159,7 +180,7 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
     print('Doctor: $doctorName (ID: $doctorId)');
     print('User ID: $_userId');
     print('Is requesting: $_isRequestingMeeting');
-    
+
     if (_isRequestingMeeting) {
       print('ALREADY REQUESTING - ABORTING');
       return;
@@ -178,26 +199,28 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
       print('User found: ${user.email}');
 
       // Get username from metadata with fallback
-      final userName = user.userMetadata?['username'] ?? user.email?.split('@').first ?? 'User';
+      final userName =
+          user.userMetadata?['username'] ??
+          user.email?.split('@').first ??
+          'User';
       print('Username: $userName');
 
       // Insert into call_requests table
-      final response = await _supabase
-          .from('call_requests')
-          .insert({
-            'doctor_id': int.parse(doctorId),
-            'user_id': user.id,
-            'email': user.email ?? 'user@example.com',
-            'username': userName,
-            'status': 'pending', // Default status as per new table
-          })
-          .select();
-          
+      final response = await _supabase.from('call_requests').insert({
+        'doctor_id': int.parse(doctorId),
+        'user_id': user.id,
+        'email': user.email ?? 'user@example.com',
+        'username': userName,
+        'status': 'pending', // Default status as per new table
+      }).select();
+
       print('Call request inserted successfully: $response');
 
-      _showSnackBar('Call request sent to $doctorName. They will review your request.', isError: false);
+      _showSnackBar(
+        'Call request sent to $doctorName. They will review your request.',
+        isError: false,
+      );
       print('=== CALL REQUEST COMPLETE ===');
-      
     } catch (e) {
       print('ERROR REQUESTING MEETING: $e');
       _showSnackBar('Failed to schedule meeting: $e', isError: true);
@@ -213,7 +236,7 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
         .toLowerCase()
         .replaceAll(RegExp(r'[^a-z0-9]'), '')
         .substring(0, userName.length < 10 ? userName.length : 10);
-    
+
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     return '$sanitizedName-$timestamp';
   }
@@ -224,11 +247,11 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
     print('Meeting room: $meetingRoom');
     print('User info: ${_supabase.auth.currentUser?.email}');
     print('Context available: ${context != null}');
-    
+
     try {
       final jitsiMeet = JitsiMeet();
       print('Jitsi instance created successfully');
-      
+
       var listener = JitsiMeetEventListener(
         conferenceJoined: (url) {
           print("CONFERENCE JOINED: $url");
@@ -283,35 +306,41 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
           "invite.enabled": true,
         },
         userInfo: JitsiMeetUserInfo(
-          displayName: _supabase.auth.currentUser?.userMetadata?['username'] ?? _supabase.auth.currentUser?.email?.split('@').first ?? 'Patient',
+          displayName:
+              _supabase.auth.currentUser?.userMetadata?['username'] ??
+              _supabase.auth.currentUser?.email?.split('@').first ??
+              'Patient',
           email: _supabase.auth.currentUser?.email ?? 'patient@example.com',
         ),
       );
-      
+
       print('Jitsi options configured:');
       print('- Room: ${options.room}');
       print('- Server URL: ${options.serverURL}');
       print('- Subject: ${options.configOverrides!['subject']}');
       print('- User: ${options.userInfo?.displayName ?? 'Unknown'}');
-      
+
       print('Calling jitsiMeet.join()...');
       jitsiMeet.join(options, listener);
       print('JITSI MEETING JOIN CALLED SUCCESSFULLY');
-      
     } catch (e, stackTrace) {
       print('ERROR STARTING JITSI MEETING: $e');
       print('Stack trace: $stackTrace');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error starting meeting: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error starting meeting: $e')));
     }
   }
 
   Future<void> _joinMeeting(Map<String, dynamic> appointment) async {
     // Use the correct field name matching doctor side: 'meeting_room' instead of 'meeting_link'
-    final meetingRoom = appointment['meeting_room'] ?? appointment['meeting_link']; // Fallback for compatibility
+    final meetingRoom =
+        appointment['meeting_room'] ??
+        appointment['meeting_link']; // Fallback for compatibility
     final doctorName = appointment['doctors']?['name'] ?? 'Doctor';
-    final appointmentTime = DateTime.parse('${appointment['date']} ${appointment['time']}');
+    final appointmentTime = DateTime.parse(
+      '${appointment['date']} ${appointment['time']}',
+    );
     final now = DateTime.now();
 
     // COMPREHENSIVE DEBUG LOGGING
@@ -321,8 +350,12 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
     print('Appointment time: $appointmentTime');
     print('Meeting room: $meetingRoom');
     print('Doctor name: $doctorName');
-    print('User timezone: ${now.timeZoneName} (offset: ${now.timeZoneOffset.inHours}h)');
-    print('Raw time difference: ${appointmentTime.difference(now).inMinutes} minutes');
+    print(
+      'User timezone: ${now.timeZoneName} (offset: ${now.timeZoneOffset.inHours}h)',
+    );
+    print(
+      'Raw time difference: ${appointmentTime.difference(now).inMinutes} minutes',
+    );
     print('Appointment date: ${appointment['date']}');
     print('Appointment time string: ${appointment['time']}');
     print('Status: ${appointment['status']}');
@@ -331,21 +364,30 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
     // Use doctor side logic: check if meeting is ready (within 10 minutes)
     final timeDifference = appointmentTime.difference(now).inMinutes;
     final isReady = timeDifference.abs() <= 10; // Match doctor side logic
-    
+
     if (!isReady) {
-      print('BLOCKED: Meeting not ready yet (${timeDifference} minutes difference)');
-      _showSnackBar('Meeting is scheduled for ${_formatDateTime(appointmentTime)}. You can join within 10 minutes of the scheduled time.', isError: true);
+      print(
+        'BLOCKED: Meeting not ready yet (${timeDifference} minutes difference)',
+      );
+      _showSnackBar(
+        'Meeting is scheduled for ${_formatDateTime(appointmentTime)}. You can join within 10 minutes of the scheduled time.',
+        isError: true,
+      );
       return;
     }
 
     // Check if meeting has expired (more than 50 minutes after scheduled time)
     if (now.isAfter(appointmentTime.add(Duration(minutes: 50)))) {
-      print('BLOCKED: Meeting has expired (more than 50 minutes after scheduled time)');
+      print(
+        'BLOCKED: Meeting has expired (more than 50 minutes after scheduled time)',
+      );
       _showSnackBar('This meeting has expired', isError: true);
       return;
     }
 
-    print('APPROVED: Starting Jitsi meeting - Time difference: $timeDifference minutes');
+    print(
+      'APPROVED: Starting Jitsi meeting - Time difference: $timeDifference minutes',
+    );
     // Start Jitsi meeting immediately
     _startJitsiMeeting(doctorName, meetingRoom);
   }
@@ -354,9 +396,7 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
     try {
       await _supabase
           .from('appointments')
-          .update({
-            'status': 'cancelled',
-          })
+          .update({'status': 'cancelled'})
           .eq('id', appointmentId);
 
       _showSnackBar('Appointment cancelled', isError: false);
@@ -395,7 +435,7 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
     try {
       final now = DateTime.now();
       final appointmentDateTime = DateTime.parse('$date $time');
-      
+
       final difference = appointmentDateTime.difference(now).inMinutes;
       return difference.abs() <= 10;
     } catch (e) {
@@ -407,7 +447,7 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
     try {
       final now = DateTime.now();
       final appointmentDateTime = DateTime.parse('$date $time');
-      
+
       return now.isAfter(appointmentDateTime.add(const Duration(minutes: 50)));
     } catch (e) {
       return true;
@@ -417,74 +457,138 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: _backgroundColor,
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Find Your Specialist',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-            Text(
-              'Personalized matches for you',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
-          ],
+        title: FadeTransition(
+          opacity: _fadeAnimation,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(LineIcons.stethoscope, color: _accentGreen, size: 28),
+              const SizedBox(width: 12),
+              Text(
+                'Find Your Specialist',
+                style: GoogleFonts.poppins(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF2D3E40),
+                ),
+              ),
+            ],
+          ),
         ),
-        backgroundColor: Colors.white,
-        elevation: 1,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                _accentGreen.withOpacity(0.1),
+                _accentGreen.withOpacity(0.05),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        elevation: 0,
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh, color: Theme.of(context).primaryColor),
+            icon: const Icon(Icons.refresh),
             onPressed: _refreshData,
+            color: _accentGreen,
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: Theme.of(context).primaryColor,
-          unselectedLabelColor: Colors.grey[600],
-          indicatorColor: Theme.of(context).primaryColor,
-          tabs: [
-            Tab(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.schedule, size: 20),
-                  SizedBox(width: 8),
-                  Text("Today's Meetings"),
-                  if (_todaysAppointments.isNotEmpty) ...[
-                    SizedBox(width: 4),
-                    Container(
-                      padding: EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        _todaysAppointments.length.toString(),
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(120),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                  ),
+                ),
+              ),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 16,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      _accentGreen.withOpacity(0.08),
+                      _accentGreen.withOpacity(0.03),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: Text(
+                  'Connect with specialists who understand your needs',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[700],
+                    fontStyle: FontStyle.italic,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              TabBar(
+                controller: _tabController,
+                labelColor: _accentGreen,
+                unselectedLabelColor: Colors.grey[600],
+                indicatorColor: _accentGreen,
+                indicatorWeight: 3,
+                tabs: [
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.schedule, size: 18),
+                        const SizedBox(width: 8),
+                        Text('Today'),
+                        if (_todaysAppointments.isNotEmpty) ...[
+                          const SizedBox(width: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _accentGreen,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              _todaysAppointments.length.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                  ]
+                  ),
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(LineIcons.stethoscope, size: 18),
+                        const SizedBox(width: 8),
+                        Text('Specialists'),
+                      ],
+                    ),
+                  ),
                 ],
               ),
-            ),
-            Tab(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.medical_services, size: 20),
-                  SizedBox(width: 8),
-                  Text('Find Doctors'),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       body: _isLoading
@@ -493,10 +597,7 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
           ? _buildErrorState()
           : TabBarView(
               controller: _tabController,
-              children: [
-                _buildTodaysMeetings(),
-                _buildDoctorsContent(),
-              ],
+              children: [_buildTodaysMeetings(), _buildDoctorsContent()],
             ),
     );
   }
@@ -517,129 +618,217 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildAppointmentCard(Map<String, dynamic> appointment, Map<String, dynamic> doctor) {
-    final date = DateTime.parse(appointment['date']);
+  Widget _buildAppointmentCard(
+    Map<String, dynamic> appointment,
+    Map<String, dynamic> doctor,
+  ) {
     final time = appointment['time'].toString().substring(0, 5);
     final status = appointment['status'] ?? 'confirmed';
-    final meetingRoom = appointment['meeting_room'] ?? appointment['meeting_link'] ?? ''; // Support both field names
     final doctorName = doctor['name'] ?? 'Dr. Unknown';
     final category = doctor['category'] ?? 'General';
     final profilePicture = doctor['profilepicture'];
     final appointmentId = appointment['id'];
-    final appointmentDateTime = DateTime.parse('${appointment['date']} ${appointment['time']}');
-    final now = DateTime.now();
-    final isReady = _isMeetingTimeReady(appointment['date'], appointment['time']);
-    final isExpired = _isAppointmentExpired(appointment['date'], appointment['time']);
+    final appointmentDateTime = DateTime.parse(
+      '${appointment['date']} ${appointment['time']}',
+    );
+    final isReady = _isMeetingTimeReady(
+      appointment['date'],
+      appointment['time'],
+    );
+    final isExpired = _isAppointmentExpired(
+      appointment['date'],
+      appointment['time'],
+    );
 
     return Container(
-      margin: EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 4),
+            color: _accentGreen.withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Column(
         children: [
           ListTile(
-            leading: CircleAvatar(
-              radius: 25,
-              backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-              backgroundImage: profilePicture != null && profilePicture.isNotEmpty
-                  ? NetworkImage(profilePicture)
-                  : null,
-              child: profilePicture == null || profilePicture.isEmpty
-                  ? Icon(Icons.medical_services, color: Theme.of(context).primaryColor)
-                  : null,
+            leading: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: _accentGreen.withOpacity(0.1),
+                  backgroundImage:
+                      profilePicture != null && profilePicture.isNotEmpty
+                      ? NetworkImage(profilePicture)
+                      : null,
+                  child: profilePicture == null || profilePicture.isEmpty
+                      ? Icon(LineIcons.user, color: _accentGreen, size: 24)
+                      : null,
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: status == 'confirmed' ? Colors.green : Colors.grey,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                  ),
+                ),
+              ],
             ),
             title: Text(
               doctorName,
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: const Color(0xFF2D3E40),
+              ),
             ),
-            subtitle: Text(category),
+            subtitle: Text(
+              category,
+              style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600]),
+            ),
             trailing: Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: _getStatusColor(status).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 status.toUpperCase(),
-                style: TextStyle(
+                style: GoogleFonts.poppins(
                   color: _getStatusColor(status),
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ),
-          Divider(height: 1),
+          Divider(height: 1, color: Colors.grey[200]),
           Padding(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
-                    SizedBox(width: 8),
-                    Text(
-                      'Today at $time',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[700], fontWeight: FontWeight.w500),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: _accentGreen.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.access_time,
+                        size: 16,
+                        color: _accentGreen,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Today at $time',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF2D3E40),
+                          ),
+                        ),
+                        Text(
+                          _getTimeStatus(appointmentDateTime),
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
-                    SizedBox(width: 8),
-                    Text(
-                      _getTimeStatus(appointmentDateTime),
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                if (isReady) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
                     ),
-                  ],
-                ),
-                if (isReady)
-                  SizedBox(height: 8),
-                if (isReady)
-                  Text(
-                    'Meeting ready to start',
-                    style: TextStyle(
-                      color: Colors.green,
-                      fontWeight: FontWeight.bold,
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.check_circle,
+                          size: 14,
+                          color: Colors.green,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Meeting ready to start',
+                          style: GoogleFonts.poppins(
+                            color: Colors.green,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                SizedBox(height: 12),
+                ],
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     if (status == 'confirmed') ...[
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () => _cancelAppointment(appointmentId),
-                          icon: Icon(Icons.cancel, size: 16),
-                          label: Text('Cancel'),
+                          icon: const Icon(Icons.close, size: 16),
+                          label: Text('Cancel', style: GoogleFonts.poppins()),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.red,
-                            padding: EdgeInsets.symmetric(vertical: 8),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            side: const BorderSide(color: Colors.red, width: 1),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: (!isExpired && isReady) ? () => _joinMeeting(appointment) : null,
-                          icon: Icon(Icons.video_call, size: 16),
-                          label: Text(!isExpired && isReady ? 'Join Meeting' : (isExpired ? 'Meeting Expired' : 'Not Ready')),
+                          onPressed: (!isExpired && isReady)
+                              ? () => _joinMeeting(appointment)
+                              : null,
+                          icon: const Icon(Icons.video_call, size: 16),
+                          label: Text(
+                            !isExpired && isReady
+                                ? 'Join'
+                                : (isExpired ? 'Expired' : 'Not Ready'),
+                            style: GoogleFonts.poppins(),
+                          ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: (!isExpired && isReady) ? Colors.green[600] : Colors.grey[400],
+                            backgroundColor: (!isExpired && isReady)
+                                ? _accentGreen
+                                : Colors.grey[400],
                             foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(vertical: 12),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ),
@@ -648,11 +837,21 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () {},
-                          icon: Icon(Icons.cancel, size: 16),
-                          label: Text('Cancelled'),
+                          icon: const Icon(Icons.cancel, size: 16),
+                          label: Text(
+                            'Cancelled',
+                            style: GoogleFonts.poppins(),
+                          ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.grey,
-                            padding: EdgeInsets.symmetric(vertical: 8),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            side: const BorderSide(
+                              color: Colors.grey,
+                              width: 1,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ),
@@ -670,7 +869,7 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
   String _getTimeStatus(DateTime appointmentTime) {
     final now = DateTime.now();
     final difference = appointmentTime.difference(now);
-    
+
     if (difference.inMinutes < 0) {
       final hoursAgo = difference.inHours.abs();
       if (hoursAgo == 0) {
@@ -691,38 +890,46 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: EdgeInsets.all(20),
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(20),
+              color: _accentGreen.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(24),
             ),
             child: Icon(
               Icons.schedule_outlined,
-              size: 64,
-              color: Colors.grey[400],
+              size: 56,
+              color: _accentGreen.withOpacity(0.7),
             ),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 20),
           Text(
             'No Meetings Today',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: GoogleFonts.poppins(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF2D3E40),
+            ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
-            'Your scheduled appointments for today will appear here',
+            'Your scheduled appointments will appear here',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[600]),
           ),
-          SizedBox(height: 24),
+          const SizedBox(height: 28),
           ElevatedButton.icon(
             onPressed: () {
-              _tabController.animateTo(1); // Switch to doctors tab
+              _tabController.animateTo(1);
             },
-            icon: Icon(Icons.medical_services),
-            label: Text('Find Doctors'),
+            icon: Icon(LineIcons.stethoscope),
+            label: Text('Find Specialists', style: GoogleFonts.poppins()),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
+              backgroundColor: _accentGreen,
               foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
         ],
@@ -737,55 +944,56 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
 
     return Column(
       children: [
-        // Header Card - Fixed height content
+        // Header Card with gradient
         Container(
-          margin: EdgeInsets.all(16),
-          padding: EdgeInsets.all(20),
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                Theme.of(context).primaryColor.withOpacity(0.1),
-                Theme.of(context).primaryColor.withOpacity(0.05),
+                _accentGreen.withOpacity(0.1),
+                _accentGreen.withOpacity(0.05),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Theme.of(context).primaryColor.withOpacity(0.2),
-            ),
+            border: Border.all(color: _accentGreen.withOpacity(0.2)),
           ),
           child: Row(
             children: [
               Container(
-                padding: EdgeInsets.all(12),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withOpacity(0.1),
+                  color: _accentGreen.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  Icons.medical_services,
-                  color: Theme.of(context).primaryColor,
+                  LineIcons.stethoscope,
+                  color: _accentGreen,
                   size: 24,
                 ),
               ),
-              SizedBox(width: 16),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Specialized Care',
-                      style: TextStyle(
+                      style: GoogleFonts.poppins(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.grey[800],
+                        color: const Color(0xFF2D3E40),
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       '$onlineDoctorsCount/${_matchingDoctors.length} specialists available now',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
                     ),
                   ],
                 ),
@@ -794,54 +1002,57 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
           ),
         ),
 
-        // Online Status Info - Fixed height content
+        // Availability status legend
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
               Container(
-                width: 8,
-                height: 8,
+                width: 10,
+                height: 10,
                 decoration: BoxDecoration(
                   color: Colors.green,
                   shape: BoxShape.circle,
                 ),
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
-                'Available now',
-                style: TextStyle(
+                'Available',
+                style: GoogleFonts.poppins(
                   fontSize: 12,
                   color: Colors.green[700],
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              SizedBox(width: 16),
+              const SizedBox(width: 16),
               Container(
-                width: 8,
-                height: 8,
+                width: 10,
+                height: 10,
                 decoration: BoxDecoration(
                   color: Colors.grey,
                   shape: BoxShape.circle,
                 ),
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
-                'Currently unavailable',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                'Unavailable',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
               ),
             ],
           ),
         ),
 
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
 
-        // Doctors List - Expand to take remaining space and scroll
+        // Doctors list
         Expanded(
           child: _matchingDoctors.isEmpty
               ? _buildEmptyDoctorsState()
               : ListView.builder(
-                  padding: EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.only(bottom: 16),
                   itemCount: _matchingDoctors.length,
                   itemBuilder: (context, index) {
                     final doctor = _matchingDoctors[index];
@@ -861,15 +1072,15 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
     final doctorId = doctor['id'].toString();
 
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 4),
+            color: _accentGreen.withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -879,13 +1090,14 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
             leading: Stack(
               children: [
                 CircleAvatar(
-                  radius: 25,
-                  backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-                  backgroundImage: profilePicture != null && profilePicture.isNotEmpty
+                  radius: 28,
+                  backgroundColor: _accentGreen.withOpacity(0.1),
+                  backgroundImage:
+                      profilePicture != null && profilePicture.isNotEmpty
                       ? NetworkImage(profilePicture)
                       : null,
                   child: profilePicture == null || profilePicture.isEmpty
-                      ? Icon(Icons.medical_services, color: Theme.of(context).primaryColor)
+                      ? Icon(LineIcons.user, color: _accentGreen, size: 24)
                       : null,
                 ),
                 Positioned(
@@ -905,37 +1117,52 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
             ),
             title: Text(
               name,
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: const Color(0xFF2D3E40),
+              ),
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(category),
-                SizedBox(height: 2),
+                Text(
+                  category,
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 4),
                 Row(
                   children: [
-                    Icon(Icons.circle, size: 8, color: isOnline ? Colors.green : Colors.grey),
-                    SizedBox(width: 4),
+                    Icon(
+                      Icons.circle,
+                      size: 8,
+                      color: isOnline ? Colors.green : Colors.grey,
+                    ),
+                    const SizedBox(width: 6),
                     Text(
                       isOnline ? 'Available now' : 'Currently unavailable',
-                      style: TextStyle(fontSize: 12, color: isOnline ? Colors.green[700] : Colors.grey[500]),
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: isOnline ? Colors.green[700] : Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
-            trailing: Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(Icons.arrow_forward_ios, size: 16, color: Theme.of(context).primaryColor),
+            trailing: Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: _accentGreen,
             ),
             onTap: () => _showDoctorDetails(doctor, isOnline),
           ),
           if (isOnline) ...[
-            Divider(height: 1),
+            Divider(height: 1, color: Colors.grey[200]),
             _buildMeetingButton(isOnline, name, doctorId),
           ],
         ],
@@ -943,9 +1170,13 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildMeetingButton(bool isOnline, String doctorName, String doctorId) {
+  Widget _buildMeetingButton(
+    bool isOnline,
+    String doctorName,
+    String doctorId,
+  ) {
     return Padding(
-      padding: EdgeInsets.all(12),
+      padding: const EdgeInsets.all(12),
       child: SizedBox(
         width: double.infinity,
         child: ElevatedButton.icon(
@@ -956,15 +1187,25 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
               ? SizedBox(
                   width: 16,
                   height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
                 )
-              : Icon(Icons.schedule, size: 20),
-          label: _isRequestingMeeting ? Text('Requesting...') : Text('Schedule Meeting'),
+              : Icon(Icons.schedule, size: 18),
+          label: Text(
+            _isRequestingMeeting ? 'Requesting...' : 'Schedule Meeting',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: isOnline && !_isRequestingMeeting ? Theme.of(context).primaryColor : Colors.grey[400],
+            backgroundColor: isOnline && !_isRequestingMeeting
+                ? _accentGreen
+                : Colors.grey[400],
             foregroundColor: Colors.white,
-            padding: EdgeInsets.symmetric(vertical: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         ),
       ),
@@ -977,25 +1218,30 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: EdgeInsets.all(20),
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
+              color: _accentGreen.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(24),
             ),
-            child: Icon(
-              Icons.medical_services,
-              size: 48,
-              color: Theme.of(context).primaryColor,
-            ),
+            child: Icon(LineIcons.stethoscope, size: 56, color: _accentGreen),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 20),
           Text(
             'Finding your perfect match...',
-            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF2D3E40),
+            ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
+          Text(
+            'We\'re analyzing your needs',
+            style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 20),
           CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).primaryColor),
+            valueColor: AlwaysStoppedAnimation<Color>(_accentGreen),
           ),
         ],
       ),
@@ -1005,32 +1251,56 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
   Widget _buildErrorState() {
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(24),
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: EdgeInsets.all(20),
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(24),
               ),
-              child: Icon(Icons.psychology_outlined, size: 48, color: Colors.orange),
+              child: Icon(
+                Icons.psychology_outlined,
+                size: 56,
+                color: Colors.orange,
+              ),
             ),
-            SizedBox(height: 16),
-            Text('Assessment Required', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            SizedBox(height: 8),
-            Text(_errorMessage, textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-            SizedBox(height: 24),
+            const SizedBox(height: 20),
+            Text(
+              'Assessment Required',
+              style: GoogleFonts.poppins(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF2D3E40),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _errorMessage,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: Colors.grey[600],
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 28),
             ElevatedButton.icon(
               onPressed: _refreshData,
-              icon: Icon(Icons.refresh),
-              label: Text('Check Again'),
+              icon: const Icon(Icons.refresh),
+              label: Text('Try Again', style: GoogleFonts.poppins()),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).primaryColor,
+                backgroundColor: _accentGreen,
                 foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 14,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
             ),
           ],
@@ -1045,17 +1315,35 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(20)),
-            child: Icon(Icons.medical_services_outlined, size: 64, color: Colors.grey[400]),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Icon(
+              Icons.people_outline,
+              size: 56,
+              color: Colors.grey[400],
+            ),
           ),
-          SizedBox(height: 16),
-          Text('No specialists available', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          SizedBox(height: 8),
+          const SizedBox(height: 20),
           Text(
-            'Please check back later for available specialists\nthat match your needs',
+            'No specialists available',
+            style: GoogleFonts.poppins(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF2D3E40),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Please check back later for specialists\nthat match your needs',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: Colors.grey[600],
+              height: 1.5,
+            ),
           ),
         ],
       ),
@@ -1067,7 +1355,9 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
     final category = doctor['category'] ?? 'General';
     final email = doctor['email'] ?? 'N/A';
     final profilePicture = doctor['profilepicture'];
-    final bio = doctor['bio'] ?? 'Specialized in providing personalized care and support.';
+    final bio =
+        doctor['bio'] ??
+        'Specialized in providing personalized care and support.';
     final doctorId = doctor['id'].toString();
 
     showModalBottomSheet(
@@ -1078,20 +1368,25 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
         height: MediaQuery.of(context).size.height * 0.8,
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: Column(
           children: [
-            // Header - Fixed height section
+            // Header with gradient
             Container(
-              padding: EdgeInsets.all(24),
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Theme.of(context).primaryColor.withOpacity(0.1), Theme.of(context).primaryColor.withOpacity(0.05)],
+                  colors: [
+                    _accentGreen.withOpacity(0.1),
+                    _accentGreen.withOpacity(0.05),
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(28),
+                ),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1100,39 +1395,70 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
                     children: [
                       CircleAvatar(
                         radius: 50,
-                        backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-                        backgroundImage: profilePicture != null && profilePicture.isNotEmpty ? NetworkImage(profilePicture) : null,
+                        backgroundColor: _accentGreen.withOpacity(0.1),
+                        backgroundImage:
+                            profilePicture != null && profilePicture.isNotEmpty
+                            ? NetworkImage(profilePicture)
+                            : null,
                         child: profilePicture == null || profilePicture.isEmpty
-                            ? Icon(Icons.medical_services, size: 40, color: Theme.of(context).primaryColor)
+                            ? Icon(
+                                LineIcons.user,
+                                size: 40,
+                                color: _accentGreen,
+                              )
                             : null,
                       ),
                       Positioned(
                         bottom: 0,
                         right: 0,
                         child: Container(
-                          padding: EdgeInsets.all(4),
+                          padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
                             color: isOnline ? Colors.green : Colors.grey,
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 2),
                           ),
+                          child: const SizedBox(width: 12, height: 12),
                         ),
                       ),
                     ],
                   ),
-                  SizedBox(height: 16),
-                  Text(name, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 4),
-                  Text(category, style: TextStyle(fontSize: 16, color: Colors.grey[600])),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 16),
+                  Text(
+                    name,
+                    style: GoogleFonts.poppins(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF2D3E40),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    category,
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.circle, size: 8, color: isOnline ? Colors.green : Colors.grey),
-                      SizedBox(width: 6),
+                      Icon(
+                        Icons.circle,
+                        size: 8,
+                        color: isOnline ? Colors.green : Colors.grey,
+                      ),
+                      const SizedBox(width: 8),
                       Text(
                         isOnline ? 'Available now' : 'Currently unavailable',
-                        style: TextStyle(color: isOnline ? Colors.green[700] : Colors.grey[600], fontWeight: FontWeight.w500),
+                        style: GoogleFonts.poppins(
+                          color: isOnline
+                              ? Colors.green[700]
+                              : Colors.grey[600],
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
                       ),
                     ],
                   ),
@@ -1140,64 +1466,148 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
               ),
             ),
 
-            // Scrollable content section
+            // Scrollable content
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.all(24),
+                padding: const EdgeInsets.all(24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('About', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    SizedBox(height: 8),
-                    Text(bio, style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.5)),
-                    SizedBox(height: 24),
-                    ListTile(
-                      leading: Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                        child: Icon(Icons.email, color: Colors.blue, size: 20),
+                    Text(
+                      'About',
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF2D3E40),
                       ),
-                      title: Text('Email', style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500)),
-                      subtitle: Text(email, style: TextStyle(fontSize: 14, color: Colors.grey[900], fontWeight: FontWeight.w600)),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      bio,
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        height: 1.6,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: _accentGreen.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: _accentGreen.withOpacity(0.2),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: _accentGreen.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.email_outlined,
+                              color: _accentGreen,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Email',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  email,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF2D3E40),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
 
-            // Fixed action buttons section
+            // Action buttons
             Container(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.grey[50],
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(25)),
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(28),
+                ),
               ),
               child: Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => _showSnackBar('Contact feature coming soon!'),
-                      icon: Icon(Icons.message_outlined),
-                      label: Text('Message'),
-                      style: OutlinedButton.styleFrom(padding: EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                      onPressed: () =>
+                          _showSnackBar('Contact feature coming soon!'),
+                      icon: const Icon(Icons.message_outlined, size: 18),
+                      label: Text('Message', style: GoogleFonts.poppins()),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: _accentGreen,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: BorderSide(color: _accentGreen.withOpacity(0.3)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                     ),
                   ),
-                  SizedBox(width: 12),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: isOnline && !_isRequestingMeeting ? () {
-                        Navigator.pop(context);
-                        _requestMeeting(name, doctorId);
-                      } : null,
+                      onPressed: isOnline && !_isRequestingMeeting
+                          ? () {
+                              Navigator.pop(context);
+                              _requestMeeting(name, doctorId);
+                            }
+                          : null,
                       icon: _isRequestingMeeting
-                          ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)))
-                          : Icon(Icons.schedule),
-                      label: _isRequestingMeeting ? Text('Requesting...') : Text('Schedule Meeting'),
+                          ? SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          : const Icon(Icons.schedule, size: 18),
+                      label: Text(
+                        _isRequestingMeeting ? 'Requesting...' : 'Schedule',
+                        style: GoogleFonts.poppins(),
+                      ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: isOnline && !_isRequestingMeeting ? Theme.of(context).primaryColor : Colors.grey[400],
+                        backgroundColor: isOnline && !_isRequestingMeeting
+                            ? _accentGreen
+                            : Colors.grey[400],
                         foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),
