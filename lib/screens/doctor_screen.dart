@@ -94,8 +94,27 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
           .eq('dominant_state', dominantState)
           .order('name');
 
+      // Sort doctors to bring available (online) doctors to the top
+      final doctors = List<Map<String, dynamic>>.from(response);
+      doctors.sort((a, b) {
+        final aIsOnline = a['avb_status'] == true;
+        final bIsOnline = b['avb_status'] == true;
+        
+        // Online doctors come first
+        if (aIsOnline && !bIsOnline) {
+          return -1;
+        } else if (!aIsOnline && bIsOnline) {
+          return 1;
+        } else {
+          // If both have same availability status, sort alphabetically by name
+          final aName = (a['name'] ?? '').toString().toLowerCase();
+          final bName = (b['name'] ?? '').toString().toLowerCase();
+          return aName.compareTo(bName);
+        }
+      });
+
       setState(() {
-        _matchingDoctors = List<Map<String, dynamic>>.from(response);
+        _matchingDoctors = doctors;
       });
     } catch (e) {
       setState(() {
