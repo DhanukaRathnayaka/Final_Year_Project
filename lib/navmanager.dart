@@ -5,9 +5,6 @@ import 'package:safespace/screens/profile.dart';
 import 'package:safespace/screens/doctor_screen.dart';
 import 'package:safespace/screens/entertainment.dart';
 
-
-
-
 class NavManager extends StatefulWidget {
   final bool isGuest;
   const NavManager({super.key, required this.isGuest});
@@ -20,13 +17,20 @@ class _NavManagerState extends State<NavManager> {
   int _selectedIndex = 0;
 
   // Global key to access HomeScreen methods
-  final GlobalKey<HomeScreenState> _homeScreenKey = GlobalKey<HomeScreenState>();
+  final GlobalKey<HomeScreenState> _homeScreenKey =
+      GlobalKey<HomeScreenState>();
 
   late final List<Widget> _screens = [
     HomeScreen(key: _homeScreenKey),
-    const EntertainmentScreen(),
-    if (!widget.isGuest)  DoctorScreen() else const SizedBox.shrink(),
-    if (!widget.isGuest) const ProfilePage() else const SizedBox.shrink(),
+    EntertainmentScreen(onTabChange: _onTabChange),
+    if (!widget.isGuest)
+      DoctorScreen(onTabChange: _onTabChange)
+    else
+      const SizedBox.shrink(),
+    if (!widget.isGuest)
+      ProfilePage(onTabChange: _onTabChange)
+    else
+      const SizedBox.shrink(),
   ];
 
   void _onTabChange(int index) {

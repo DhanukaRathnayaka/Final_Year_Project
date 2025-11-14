@@ -7,7 +7,8 @@ import 'package:safespace/authentication/auth_service.dart';
 import 'package:supabase/supabase.dart' as supabase;
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final void Function(int)? onTabChange;
+  const ProfilePage({Key? key, this.onTabChange}) : super(key: key);
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -320,79 +321,85 @@ class _ProfilePageState extends State<ProfilePage>
     final email = _authService.getCurrentUserEmail() ?? 'No email';
     final displayEmail = _hideEmail ? _maskEmail(email) : email;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFf8fdfb),
-      appBar: AppBar(
-        title: Row(
-          children: [
-            if (_avatarUrl != null)
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: const Color(0xFF4A9280).withOpacity(0.2),
-                backgroundImage: NetworkImage(_avatarUrl!),
-                onBackgroundImageError: (exception, stackTrace) {
-                  // Fallback handled
-                },
-              )
-            else
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4A9280).withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  LineIcons.user,
-                  color: Color(0xFF4A9280),
-                  size: 20,
-                ),
-              ),
-            SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Profile',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: const Color(0xFF1a1a1a),
+    return WillPopScope(
+      onWillPop: () async {
+        widget.onTabChange?.call(0);
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFf8fdfb),
+        appBar: AppBar(
+          title: Row(
+            children: [
+              if (_avatarUrl != null)
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: const Color(0xFF4A9280).withOpacity(0.2),
+                  backgroundImage: NetworkImage(_avatarUrl!),
+                  onBackgroundImageError: (exception, stackTrace) {
+                    // Fallback handled
+                  },
+                )
+              else
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4A9280).withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    LineIcons.user,
+                    color: Color(0xFF4A9280),
+                    size: 20,
                   ),
                 ),
-                Text(
-                  'Manage your account',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          ],
+              SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Profile',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: const Color(0xFF1a1a1a),
+                    ),
+                  ),
+                  Text(
+                    'Manage your account',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          backgroundColor: Colors.white,
+          elevation: 0,
         ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: _isLoading
-          ? _buildLoadingState()
-          : FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      _buildProfileHeader(username, displayEmail),
-                      SizedBox(height: 24),
-                      _buildProfileActions(),
-                      SizedBox(height: 24),
-                      _buildAccountInfo(username, displayEmail),
-                      SizedBox(height: 24),
-                      _buildSignOutButton(),
-                    ],
+        body: _isLoading
+            ? _buildLoadingState()
+            : FadeTransition(
+                opacity: _fadeAnimation,
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        _buildProfileHeader(username, displayEmail),
+                        SizedBox(height: 24),
+                        _buildProfileActions(),
+                        SizedBox(height: 24),
+                        _buildAccountInfo(username, displayEmail),
+                        SizedBox(height: 24),
+                        _buildSignOutButton(),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
+      ),
     );
   }
 

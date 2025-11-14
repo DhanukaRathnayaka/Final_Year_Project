@@ -3,6 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:jitsi_meet_flutter_sdk/jitsi_meet_flutter_sdk.dart';
 
 class DoctorScreen extends StatefulWidget {
+  final void Function(int)? onTabChange;
+  const DoctorScreen({Key? key, this.onTabChange}) : super(key: key);
   @override
   _DoctorScreenState createState() => _DoctorScreenState();
 }
@@ -407,9 +409,14 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
+      return WillPopScope(
+        onWillPop: () async {
+        widget.onTabChange?.call(0);
+        return false;
+        },
+        child: Scaffold(
+          backgroundColor: Colors.grey[50],
+          appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -489,6 +496,7 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
                 _buildDoctorsContent(),
               ],
             ),
+        ),      
     );
   }
 

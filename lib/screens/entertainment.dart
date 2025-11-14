@@ -7,7 +7,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:safespace/screens/media_player_screen.dart';
 
 class EntertainmentScreen extends StatefulWidget {
-  const EntertainmentScreen({super.key});
+  final void Function(int)? onTabChange;
+  const EntertainmentScreen({Key? key, this.onTabChange}) : super(key: key);
 
   @override
   State<EntertainmentScreen> createState() => _EntertainmentScreenState();
@@ -204,60 +205,32 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: FadeTransition(
-          opacity: _fadeAnimation,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(LineIcons.music, color: const Color(0xFF6ABFA0), size: 28),
-              const SizedBox(width: 8),
-              Text(
-                'Entertainment',
-                style: const TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF2D3E40),
+    return WillPopScope(
+      onWillPop: () async {
+        widget.onTabChange?.call(0);
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(LineIcons.music, color: const Color(0xFF6ABFA0), size: 28),
+                const SizedBox(width: 8),
+                Text(
+                  'Entertainment',
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF2D3E40),
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFFEAFBF5), Color(0xFFFFFFFF)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+              ],
             ),
           ),
-        ),
-        elevation: 0,
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicator: BoxDecoration(
-            color: const Color(0xFF74C69D).withOpacity(0.2),
-          ),
-          indicatorSize: TabBarIndicatorSize.tab,
-          labelColor: const Color(0xFF2D3E40),
-          unselectedLabelColor: Colors.grey,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w600),
-          tabs: const [
-            Tab(text: "All Content"),
-            Tab(text: "For You"),
-            Tab(text: "Exercises"),
-          ],
-        ),
-      ),
-      body: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+          flexibleSpace: Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [Color(0xFFEAFBF5), Color(0xFFFFFFFF)],
@@ -265,27 +238,61 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
                 end: Alignment.bottomRight,
               ),
             ),
-            child: Text(
-              "Find peace through music, meditation, and reflection.",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey[700],
-                fontStyle: FontStyle.italic,
-              ),
-              textAlign: TextAlign.center,
+          ),
+          elevation: 0,
+          actions: [
+            IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
+          ],
+          bottom: TabBar(
+            controller: _tabController,
+            indicator: BoxDecoration(
+              color: const Color(0xFF74C69D).withOpacity(0.2),
             ),
+            indicatorSize: TabBarIndicatorSize.tab,
+            labelColor: const Color(0xFF2D3E40),
+            unselectedLabelColor: Colors.grey,
+            labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+            tabs: const [
+              Tab(text: "All Content"),
+              Tab(text: "For You"),
+              Tab(text: "Exercises"),
+            ],
           ),
-          if (!isLoading && errorMessage.isEmpty && _tabController.index == 0)
-            _buildCategoryFilter(),
-          Expanded(
-            child: isLoading
-                ? _buildLoadingState()
-                : errorMessage.isNotEmpty
-                ? _buildErrorState()
-                : _buildContentList(),
-          ),
-        ],
+        ),
+        body: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFFEAFBF5), Color(0xFFFFFFFF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Text(
+                "Find peace through music, meditation, and reflection.",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey[700],
+                  fontStyle: FontStyle.italic,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            if (!isLoading && errorMessage.isEmpty && _tabController.index == 0)
+              _buildCategoryFilter(),
+            Expanded(
+              child: isLoading
+                  ? _buildLoadingState()
+                  : errorMessage.isNotEmpty
+                  ? _buildErrorState()
+                  : _buildContentList(),
+            ),
+          ],
+        ),
       ),
     );
   }
