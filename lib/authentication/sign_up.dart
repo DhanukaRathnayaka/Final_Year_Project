@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:safespace/navmanager.dart';
+import 'package:safespace/screens/chatbot.dart';
 import 'package:safespace/authentication/auth_service.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:safespace/services/notification_manager.dart';
-import 'package:safespace/screens/chatbot.dart';
+
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -52,17 +52,7 @@ class _SignUpPageState extends State<SignUpPage> {
           ),
         );
 
-        // Show onboarding notification after navigation
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            NotificationManager().showOnboardingNotification(context, () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => ChatBotScreen()),
-              );
-            });
-          }
-        });
+
       }
     } catch (e) {
       setState(() => _errorMessage = e.toString());

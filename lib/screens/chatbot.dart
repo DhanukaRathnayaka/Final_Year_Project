@@ -9,7 +9,7 @@ import 'package:safespace/services/chat_service.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:safespace/services/mental_state_service.dart';
-import 'package:safespace/services/notification_manager.dart';
+
 
 class ChatBotScreen extends StatefulWidget {
   @override
@@ -129,13 +129,7 @@ class _ChatBotScreenState extends State<ChatBotScreen>
           .update({'ended_at': DateTime.now().toIso8601String()})
           .eq('id', currentConversationId!);
 
-      // Show chatbot end notification
-      if (mounted) {
-        NotificationManager().showChatbotEndNotification(context, () {
-          // Action when user taps "View Recommendations"
-          Navigator.pop(context); // Close chatbot
-        });
-      }
+      
 
       return true; // Allow back navigation
     } catch (e) {

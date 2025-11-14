@@ -3,8 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:jitsi_meet_flutter_sdk/jitsi_meet_flutter_sdk.dart';
 
 class DoctorScreen extends StatefulWidget {
-  final void Function(int)? onTabChange;
-  const DoctorScreen({Key? key, this.onTabChange}) : super(key: key);
   @override
   _DoctorScreenState createState() => _DoctorScreenState();
 }
@@ -160,36 +158,26 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
       }
       print('User found: ${user.email}');
 
-      // Insert appointment - for simplicity, we'll schedule for current time + 30 minutes
-      final now = DateTime.now();
-      final meetingTime = now.add(Duration(minutes: 30));
-      final meetingDate = meetingTime.toIso8601String().split('T')[0];
-      final meetingTimeStr = '${meetingTime.hour.toString().padLeft(2, '0')}:${meetingTime.minute.toString().padLeft(2, '0')}:00';
-      
-      // Generate unique room name for Jitsi (matching doctor side)
-      final roomName = _generateRoomName(user.email?.split('@').first ?? 'User');
-      print('Generated room name: $roomName');
-      print('Scheduling meeting for: $meetingDate at $meetingTimeStr');
+      // Get username from metadata with fallback
+      final userName = user.userMetadata?['username'] ?? user.email?.split('@').first ?? 'User';
+      print('Username: $userName');
 
+      // Insert into call_requests table
       final response = await _supabase
-          .from('appointments')
+          .from('call_requests')
           .insert({
             'doctor_id': int.parse(doctorId),
             'user_id': user.id,
-            'user_name': user.email?.split('@').first ?? 'User',
-            'date': meetingDate,
-            'time': meetingTimeStr,
-            'meeting_room': roomName, // Use 'meeting_room' to match doctor side
-            'status': 'confirmed',
+            'email': user.email ?? 'user@example.com',
+            'username': userName,
+            'status': 'pending', // Default status as per new table
           })
           .select();
           
-      print('Appointment inserted successfully: $response');
+      print('Call request inserted successfully: $response');
 
-      _showSnackBar('Meeting scheduled with $doctorName at ${meetingTime.hour}:${meetingTime.minute.toString().padLeft(2, '0')}', isError: false);
-      print('Refresh appointments list...');
-      await _fetchTodaysAppointments(); // Refresh appointments list
-      print('=== MEETING REQUEST COMPLETE ===');
+      _showSnackBar('Call request sent to $doctorName. They will review your request.', isError: false);
+      print('=== CALL REQUEST COMPLETE ===');
       
     } catch (e) {
       print('ERROR REQUESTING MEETING: $e');
@@ -276,7 +264,7 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
           "invite.enabled": true,
         },
         userInfo: JitsiMeetUserInfo(
-          displayName: _supabase.auth.currentUser?.email?.split('@').first ?? 'Patient',
+          displayName: _supabase.auth.currentUser?.userMetadata?['username'] ?? _supabase.auth.currentUser?.email?.split('@').first ?? 'Patient',
           email: _supabase.auth.currentUser?.email ?? 'patient@example.com',
         ),
       );
@@ -409,14 +397,9 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-      return WillPopScope(
-        onWillPop: () async {
-        widget.onTabChange?.call(0);
-        return false;
-        },
-        child: Scaffold(
-          backgroundColor: Colors.grey[50],
-          appBar: AppBar(
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -496,7 +479,6 @@ class _DoctorScreenState extends State<DoctorScreen> with SingleTickerProviderSt
                 _buildDoctorsContent(),
               ],
             ),
-        ),      
     );
   }
 

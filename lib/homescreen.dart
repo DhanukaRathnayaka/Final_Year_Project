@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:line_icons/line_icons.dart';
 import 'package:safespace/screens/chatbot.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:safespace/screens/notification.dart';
 import 'package:safespace/authentication/auth_service.dart';
 import 'package:safespace/screens/suggestion_generator_widget.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:safespace/services/notification_manager.dart';
+
 
 class HomeScreen extends StatefulWidget {
   final bool isGuest;
@@ -104,14 +104,7 @@ class HomeScreenState extends State<HomeScreen>
 
     // Show daily reminder if user hasn't viewed recommendations today
     if (!widget.isGuest) {
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) {
-          NotificationManager().showDailyReminder(context, () {
-            // Action when user taps the recommendation action
-            // (already on home screen, recommendations are visible)
-          });
-        }
-      });
+      
     }
   }
 
