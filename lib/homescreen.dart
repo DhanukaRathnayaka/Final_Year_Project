@@ -8,6 +8,7 @@ import 'package:safespace/screens/notification.dart';
 import 'package:safespace/authentication/auth_service.dart';
 import 'package:safespace/screens/suggestion_generator_widget.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:safespace/services/notification_manager.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool isGuest;
@@ -100,6 +101,18 @@ class HomeScreenState extends State<HomeScreen>
     // Called when the user returns to this screen (e.g., pressing back button)
     print('HomeScreen: User returned to home screen, refreshing data...');
     _refreshData();
+
+    // Show daily reminder if user hasn't viewed recommendations today
+    if (!widget.isGuest) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          NotificationManager().showDailyReminder(context, () {
+            // Action when user taps the recommendation action
+            // (already on home screen, recommendations are visible)
+          });
+        }
+      });
+    }
   }
 
   // Public method to refresh data (can be called from parent)

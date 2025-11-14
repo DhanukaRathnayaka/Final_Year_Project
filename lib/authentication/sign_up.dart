@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:safespace/navmanager.dart';
-import 'package:icons_plus/icons_plus.dart';
 import 'package:safespace/authentication/auth_service.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:safespace/services/notification_manager.dart';
+import 'package:safespace/screens/chatbot.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -43,12 +44,25 @@ class _SignUpPageState extends State<SignUpPage> {
       );
 
       if (response.user != null && mounted) {
+        // Navigate to home screen first
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (context) => const NavManager(isGuest: false),
           ),
         );
+
+        // Show onboarding notification after navigation
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            NotificationManager().showOnboardingNotification(context, () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ChatBotScreen()),
+              );
+            });
+          }
+        });
       }
     } catch (e) {
       setState(() => _errorMessage = e.toString());
@@ -114,10 +128,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       const SizedBox(height: 10.0),
                       Text(
                         'Fill in your details to get started',
-                        style: TextStyle(
-                          fontSize: 16.0,
-                          color: Colors.black54,
-                        ),
+                        style: TextStyle(fontSize: 16.0, color: Colors.black54),
                       ),
                       const SizedBox(height: 40.0),
                       TextFormField(
@@ -251,7 +262,8 @@ class _SignUpPageState extends State<SignUpPage> {
                             ),
                             onPressed: () {
                               setState(
-                                () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                                () => _obscureConfirmPassword =
+                                    !_obscureConfirmPassword,
                               );
                             },
                           ),
@@ -376,7 +388,9 @@ class SignUpScaffold extends StatelessWidget {
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: NetworkImage("https://cpuhivcyhvqayzgdvdaw.supabase.co/storage/v1/object/public/appimages/signupbackground.jpg"),
+            image: NetworkImage(
+              "https://cpuhivcyhvqayzgdvdaw.supabase.co/storage/v1/object/public/appimages/signupbackground.jpg",
+            ),
             fit: BoxFit.cover,
           ),
         ),

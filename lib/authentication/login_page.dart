@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:safespace/navmanager.dart';
-import 'package:icons_plus/icons_plus.dart';
 import 'package:safespace/authentication/sign_up.dart';
 import 'package:safespace/authentication/auth_service.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
