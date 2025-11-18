@@ -1,7 +1,6 @@
 import 'package:intl/intl.dart';
 import 'package:safespace/main.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:line_icons/line_icons.dart';
 import 'package:safespace/screens/chatbot.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -475,7 +474,6 @@ class HomeScreenState extends State<HomeScreen>
       ),
     );
   }
-
   Widget _buildRecommendationsSection() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,

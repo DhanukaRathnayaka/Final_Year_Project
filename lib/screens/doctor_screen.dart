@@ -21,7 +21,6 @@ class _DoctorScreenState extends State<DoctorScreen>
   List<Map<String, dynamic>> _todaysAppointments = [];
 
   // Custom theme colors - matching home/entertainment screens
-  static const Color _primaryColor = Color(0xFF4A9280); // Calm green
   static const Color _backgroundColor = Color(0xFFF8FDFB);
   static const Color _accentGreen = Color(0xFF10A98E);
 
@@ -84,21 +83,19 @@ class _DoctorScreenState extends State<DoctorScreen>
           .limit(1)
           .single();
 
-      if (mentalStateResponse != null) {
-        setState(() {
-          _dominantState = mentalStateResponse['dominant_state'];
-        });
+      setState(() {
+        _dominantState = mentalStateResponse['dominant_state'];
+      });
 
-        await _fetchMatchingDoctors(_dominantState!);
-      } else {
-        setState(() {
-          _errorMessage =
-              'No mental state assessment found. Please complete your assessment first.';
-        });
-      }
+      await _fetchMatchingDoctors(_dominantState!);
     } catch (e) {
       setState(() {
-        _errorMessage = 'Failed to load data: $e';
+        if (e.toString().contains('NoRows')) {
+          _errorMessage =
+              'No mental state assessment found. Please complete your assessment first.';
+        } else {
+          _errorMessage = 'Failed to fetch mental state data: $e';
+        }
       });
     } finally {
       setState(() {
@@ -231,22 +228,11 @@ class _DoctorScreenState extends State<DoctorScreen>
     }
   }
 
-  String _generateRoomName(String userName) {
-    final sanitizedName = userName
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9]'), '')
-        .substring(0, userName.length < 10 ? userName.length : 10);
-
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    return '$sanitizedName-$timestamp';
-  }
-
   void _startJitsiMeeting(String doctorName, String meetingRoom) {
     print('=== JITSI MEETING START ===');
     print('Doctor name: $doctorName');
     print('Meeting room: $meetingRoom');
     print('User info: ${_supabase.auth.currentUser?.email}');
-    print('Context available: ${context != null}');
 
     try {
       final jitsiMeet = JitsiMeet();
@@ -505,9 +491,7 @@ class _DoctorScreenState extends State<DoctorScreen>
                 padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
                 child: FadeTransition(
                   opacity: _fadeAnimation,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                  ),
+                  child: Align(alignment: Alignment.centerLeft),
                 ),
               ),
               Container(

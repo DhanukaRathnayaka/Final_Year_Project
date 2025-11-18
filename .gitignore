@@ -60,3 +60,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Documentation files (local reference only)
+BACKEND_AND_CHATBOT_FLOW_DOCUMENTATION.md
+ARCHITECTURE_FLOW_DIAGRAMS.md
+IMPLEMENTATION_GUIDE_AND_CODE_REFERENCE.md

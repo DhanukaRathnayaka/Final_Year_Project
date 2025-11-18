@@ -1,17 +1,19 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from Mental_Health_Chatbot.MentalHealthChatbot import router as chatbot_router
+from services.chatbot_service import router as chatbot_router
 # Import the suggestions router and include it so /generate_suggestions is available
-from Mental_Health_Chatbot import suggestion_generator
+from services import suggestion_generator
 import sys
 import os
-# Add the backend directory to the Python path so we can import ai.py
-sys.path.append(os.path.join(os.path.dirname(__file__), "aI-SUGESTIONS"))
-from ai import router as ai_suggestions_router
+# Add the backend directory to the Python path
+sys.path.append(os.path.dirname(__file__))
+from services.ai_suggestions import router as ai_suggestions_router
+from services.recommendations import GroqMentalStatePredictor
+from services.exercises import router as exercises_router
 from pydantic import BaseModel
 import logging
 from supabase import create_client, Client
-from dotenv import load_dotenv
+from config.settings import SUPABASE_URL, SUPABASE_KEY
 from typing import Optional, List
 from datetime import datetime, timedelta
 import uuid
@@ -22,20 +24,11 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8')
 
-# Load environment variables
-load_dotenv()
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize Supabase client
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise ValueError("Missing Supabase environment variables")
-
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Create FastAPI app
@@ -56,6 +49,15 @@ app.include_router(chatbot_router, prefix="/api", tags=["chatbot"])
 app.include_router(suggestion_generator.router)
 # Include the AI suggestions router
 app.include_router(ai_suggestions_router)
+# Include the exercises router
+app.include_router(exercises_router)
+
+# Define request models
+class UserRequest(BaseModel):
+    user_id: str
+
+class PredictionRequest(BaseModel):
+    message: str
 
 @app.get("/")
 async def root():
@@ -68,8 +70,27 @@ async def root():
         }
     }
 
-class UserRequest(BaseModel):
-    user_id: str
+@app.post("/api/predict-mental-state")
+async def predict_mental_state(req: PredictionRequest):
+    """Predict mental state from a message using Groq API with fallback heuristic"""
+    try:
+        predictor = GroqMentalStatePredictor()
+        result = predictor.predict(req.message)
+        
+        return {
+            "prediction": result["prediction"],
+            "confidence": result["confidence"],
+            "message": req.message
+        }
+    except Exception as e:
+        logger.error(f"Error predicting mental state: {str(e)}")
+        # Return a safe fallback
+        return {
+            "prediction": "neutral/calm",
+            "confidence": 0.5,
+            "message": req.message,
+            "error": str(e)
+        }
 
 def get_user_dominant_state(user_id: str) -> Optional[str]:
     """Get the user's most recent dominant mental state"""
@@ -149,8 +170,8 @@ def store_recommended_doctor(user_id: str, doctor_id: str) -> Optional[dict]:
 async def recommend_entertainment(user_id: str) -> dict:
     """Get entertainment recommendations for a user based on their mental state"""
     try:
-        # Import the recommendation function from nchoice.py
-        from Suggestion.nchoice import get_all_recommendations
+        # Import the recommendation function from recommendations service
+        from services.recommendations import get_all_recommendations
         
         # Get all recommendations using the existing function
         recommendations = get_all_recommendations(user_id)
@@ -270,8 +291,8 @@ def assign_best_available_doctor(user_id: str, matching_doctors: list) -> Option
 async def get_recommendations(user_id: str):
     """Get personalized recommendations for a user based on their mental state"""
     try:
-        # Import the recommendation function from nchoice.py
-        from Suggestion.nchoice import get_all_recommendations
+        # Import the recommendation function from recommendations service
+        from services.recommendations import get_all_recommendations
         
         # Get all recommendations
         recommendations = get_all_recommendations(user_id)
@@ -290,8 +311,8 @@ async def get_recommendations(user_id: str):
 async def get_suggestions(user_id: str):
     """Get personalized suggestions for a user based on their mental state"""
     try:
-        # Import the recommendation function from nchoice.py
-        from Suggestion.nchoice import get_all_recommendations
+        # Import the recommendation function from recommendations service
+        from services.recommendations import get_all_recommendations
         
         # Get all recommendations
         recommendations = get_all_recommendations(user_id)

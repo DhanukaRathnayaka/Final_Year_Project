@@ -9,7 +9,6 @@ import 'package:safespace/authentication/login_page.dart';
 import 'package:safespace/services/mental_state_service.dart';
 import 'package:google_fonts/google_fonts.dart' as gf;
 
-// Custom theme color passe maru krmuuuuuuuuuuuuuuuuuuuuu
 const Color primaryColor = Color(0xFF5CCCB4);
 
 MaterialColor createMaterialColor(Color color) {

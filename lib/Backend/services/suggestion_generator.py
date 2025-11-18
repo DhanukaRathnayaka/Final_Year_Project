@@ -6,12 +6,8 @@ import openai
 from openai import OpenAI
 from uuid import UUID
 import os
-from dotenv import load_dotenv
 from pathlib import Path
-
-# Load environment variables from .env file
-env_path = Path(__file__).parent.parent / '.env'
-load_dotenv(dotenv_path=env_path)
+from config.settings import GROQ_API_KEY
 
 router = APIRouter()
 
@@ -20,7 +16,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # Configure Groq API key
-api_key = os.getenv("GROQ_API_KEY")
+api_key = GROQ_API_KEY
 if not api_key:
     raise ValueError("GROQ_API_KEY not found in environment variables")
 
