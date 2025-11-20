@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../config.dart';
 
 class MentalStateService {
   // Use backend API endpoint instead of direct Groq API
-  static const String _backendUrl = 'http://localhost:8000';
+  // This will automatically use the deployed backend if
+  // --dart-define=USE_DEPLOYED_BACKEND=true is supplied during build.
+  static String get _backendUrl => Config.apiBaseUrl;
   final SupabaseClient _supabase = Supabase.instance.client;
 
   static const List<String> mentalConditions = [

@@ -4,8 +4,19 @@ class Config {
   // Network IP for local network access
   static const String networkIp = 'localhost';
   static const String port = '8000';
-  
+  // Use the deployed backend on Render (or other host)
+  // Toggle this during build using --dart-define=USE_DEPLOYED_BACKEND=true
+  static const bool useDeployedBackend = bool.fromEnvironment(
+    'USE_DEPLOYED_BACKEND',
+    defaultValue: true,
+  );
+  static const String deployedBaseUrl = 'https://backend-t3db.onrender.com';
+
   static String get apiBaseUrl {
+    // Allow quickly switching between local dev and deployed backend.
+    if (useDeployedBackend) {
+      return deployedBaseUrl;
+    }
     if (kIsWeb) {
       // Web platform - try network IP first, fallback to localhost
       return 'http://$networkIp:$port';
@@ -54,5 +65,6 @@ class Config {
   }
 
   static const String supabaseUrl = 'https://cpuhivcyhvqayzgdvdaw.supabase.co';
-  static const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwdWhpdmN5aHZxYXl6Z2R2ZGF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzNDc4NDgsImV4cCI6MjA2ODkyMzg0OH0.dO22JLQjE7UeQHvQn6mojILNuWi_02MiZ9quz5v8pNk';
+  static const String supabaseAnonKey =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwdWhpdmN5aHZxYXl6Z2R2ZGF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzNDc4NDgsImV4cCI6MjA2ODkyMzg0OH0.dO22JLQjE7UeQHvQn6mojILNuWi_02MiZ9quz5v8pNk';
 }

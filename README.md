@@ -68,6 +68,24 @@ flutter pub get
 flutter run
 ```
 
+### Use the deployed backend (Render)
+
+If you don't want to run the backend locally and instead use the deployed API (for example, `https://backend-t3db.onrender.com`), the Flutter app already supports a compile-time switch.
+
+Run with the deployed backend by passing a dart-define flag:
+
+```bash
+# Web
+flutter run -d chrome --dart-define=USE_DEPLOYED_BACKEND=true
+
+# Android or iOS
+flutter run --dart-define=USE_DEPLOYED_BACKEND=true
+```
+
+This instructs the app to use the configured deployed URL. If you want to hardcode the deployed URL without the flag, see `lib/config.dart` and set `useDeployedBackend` to `true`.
+
+Note: The deployed backend has CORS enabled (see `lib/Backend/app.py`), so there should be no origin issues when accessing it from web or mobile clients. If you experience any CORS errors, open the deployed API logs and ensure `allow_origins` is configured correctly.
+
 ## 🤖 Setting up the Backend Server
 
 The backend server is located in the `lib/Backend` directory and consists of:
@@ -147,6 +165,9 @@ The backend API will be available at:
 
 Interactive API docs will be available at:
 👉 http://localhost:8000/docs
+
+Deployed API docs (Render):
+👉 https://backend-t3db.onrender.com/docs#/
 
 ## 📚 API Endpoints
 
