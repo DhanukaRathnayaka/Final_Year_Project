@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:safespace/config.dart';
 import 'package:safespace/navmanager.dart';
 import 'package:safespace/screens/chatbot.dart';
+import 'package:safespace/screens/splash_screen.dart';
+import 'package:google_fonts/google_fonts.dart' as gf;
 import 'package:safespace/authentication/sign_up.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:safespace/authentication/auth_gate.dart';
 import 'package:safespace/authentication/login_page.dart';
 import 'package:safespace/services/mental_state_service.dart';
-import 'package:google_fonts/google_fonts.dart' as gf;
 
 const Color primaryColor = Color(0xFF5CCCB4);
 
@@ -73,7 +74,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: primarySwatch,
         textTheme: gf.GoogleFonts.poppinsTextTheme(),
       ),
-      home: const AuthGate(),
+      home: const SplashScreen(),
       debugShowCheckedModeBanner: false,
       navigatorObservers: [routeObserver],
       routes: {
